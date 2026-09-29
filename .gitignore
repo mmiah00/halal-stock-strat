@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+live/*.log
+live/*_state.csv
+live/KILL_SWITCH
+live/trade_log.txt
+live/trade_log.csv

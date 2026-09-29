@@ -1,0 +1,133 @@
+ticker,status,n_bars,first_date,last_date,error
+NVDA,ok,31104,2009-01-02,2026-09-24,
+AAPL,ok,31105,2009-01-02,2026-09-24,
+MSFT,ok,31105,2009-01-02,2026-09-24,
+GOOG,ok,21921,2014-03-27,2026-09-24,
+GOOGL,ok,31106,2009-01-02,2026-09-24,
+AVGO,ok,18667,2016-02-02,2026-09-24,
+AMD,ok,20572,2015-01-02,2026-09-24,
+MU,ok,29461,2009-12-30,2026-09-24,
+CSCO,ok,31105,2009-01-02,2026-09-24,
+QCOM,ok,31099,2009-01-02,2026-09-24,
+INTC,ok,31106,2009-01-02,2026-09-24,
+AMAT,ok,31106,2009-01-02,2026-09-24,
+LRCX,ok,31105,2009-01-02,2026-09-24,
+KLAC,ok,31106,2009-01-02,2026-09-24,
+MRVL,ok,31105,2009-01-02,2026-09-24,
+ADI,ok,25389,2012-04-02,2026-09-24,
+TXN,ok,25822,2012-01-03,2026-09-24,
+NXPI,ok,28737,2010-08-06,2026-09-24,
+ON,ok,31105,2009-01-02,2026-09-24,
+MCHP,ok,31105,2009-01-02,2026-09-24,
+CDNS,ok,31106,2009-01-02,2026-09-24,
+SNPS,ok,31105,2009-01-02,2026-09-24,
+ANET,ok,21578,2014-06-06,2026-09-24,
+APH,ok,31103,2009-01-02,2026-09-24,
+GLW,ok,31103,2009-01-02,2026-09-24,
+MPWR,ok,31105,2009-01-02,2026-09-24,
+META,ok,25155,2012-05-18,2026-09-24,
+CRM,ok,31103,2009-01-02,2026-09-24,
+NOW,ok,24955,2012-06-29,2026-09-24,
+ADBE,ok,31106,2009-01-02,2026-09-24,
+ORCL,ok,31106,2009-01-02,2026-09-24,
+PANW,ok,24860,2012-07-20,2026-09-24,
+CRWD,ok,12775,2019-06-12,2026-09-24,
+FTNT,ok,29708,2009-11-18,2026-09-24,
+PLTR,ok,10479,2020-09-30,2026-09-24,
+APP,ok,9541,2021-04-15,2026-09-24,
+INTU,ok,31106,2009-01-02,2026-09-24,
+ADSK,ok,31106,2009-01-02,2026-09-24,
+ROP,ok,31103,2009-01-02,2026-09-24,
+FICO,ok,31103,2009-01-02,2026-09-24,
+DDOG,ok,12295,2019-09-19,2026-09-24,
+HUBS,ok,20972,2014-10-09,2026-09-24,
+AMZN,ok,31106,2009-01-02,2026-09-24,
+COST,ok,31105,2009-01-02,2026-09-24,
+TJX,ok,31101,2009-01-02,2026-09-24,
+LOW,ok,31103,2009-01-02,2026-09-24,
+HD,ok,31103,2009-01-02,2026-09-24,
+ORLY,ok,31098,2009-01-02,2026-09-24,
+AZO,ok,31103,2009-01-02,2026-09-24,
+ROST,ok,31105,2009-01-02,2026-09-24,
+TGT,ok,31101,2009-01-02,2026-09-24,
+DHI,ok,31103,2009-01-02,2026-09-24,
+NVR,ok,31054,2009-01-02,2026-09-24,
+LEN,ok,31103,2009-01-02,2026-09-24,
+PHM,ok,31103,2009-01-02,2026-09-24,
+CMG,ok,31103,2009-01-02,2026-09-24,
+DPZ,ok,31103,2009-01-02,2026-09-24,
+YUM,ok,31101,2009-01-02,2026-09-24,
+LLY,ok,31103,2009-01-02,2026-09-24,
+JNJ,ok,31103,2009-01-02,2026-09-24,
+ABBV,ok,24163,2012-12-10,2026-09-24,
+ABT,ok,31103,2009-01-02,2026-09-24,
+MRK,ok,31103,2009-01-02,2026-09-24,
+PFE,ok,31109,2009-01-02,2026-09-24,
+AMGN,ok,31106,2009-01-02,2026-09-24,
+GILD,ok,31106,2009-01-02,2026-09-24,
+REGN,ok,12269,2019-09-25,2026-09-24,
+VRTX,ok,31101,2009-01-02,2026-09-28,
+ISRG,ok,31116,2009-01-02,2026-09-28,
+SYK,ok,31111,2009-01-02,2026-09-28,
+BSX,ok,31113,2009-01-02,2026-09-28,
+MDT,ok,31113,2009-01-02,2026-09-28,
+DHR,ok,31113,2009-01-02,2026-09-28,
+TMO,ok,31111,2009-01-02,2026-09-28,
+EW,ok,31113,2009-01-02,2026-09-28,
+DXCM,ok,31108,2009-01-02,2026-09-28,
+IDXX,ok,21045,2014-09-26,2026-09-28,
+GE,error,0,,,Not connected
+HON,error,0,,,Not connected
+ETN,error,0,,,Not connected
+EMR,error,0,,,Not connected
+PH,error,0,,,Not connected
+ROK,error,0,,,Not connected
+ITW,error,0,,,Not connected
+FAST,error,0,,,Not connected
+URI,error,0,,,Not connected
+CSX,error,0,,,Not connected
+UNP,error,0,,,Not connected
+WM,error,0,,,Not connected
+RSG,error,0,,,Not connected
+PCAR,error,0,,,Not connected
+XOM,error,0,,,Not connected
+CVX,error,0,,,Not connected
+COP,error,0,,,Not connected
+EOG,error,0,,,Not connected
+OXY,error,0,,,Not connected
+SLB,error,0,,,Not connected
+HAL,error,0,,,Not connected
+MPC,error,0,,,Not connected
+VLO,error,0,,,Not connected
+PSX,error,0,,,Not connected
+FANG,error,0,,,Not connected
+DVN,error,0,,,Not connected
+FCX,error,0,,,Not connected
+NEM,error,0,,,Not connected
+GOLD,error,0,,,Not connected
+RIO,error,0,,,Not connected
+BHP,error,0,,,Not connected
+VALE,error,0,,,Not connected
+NUE,error,0,,,Not connected
+STLD,error,0,,,Not connected
+APD,error,0,,,Not connected
+LIN,error,0,,,Not connected
+SHW,error,0,,,Not connected
+ECL,error,0,,,Not connected
+TSM,error,0,,,Not connected
+UMC,error,0,,,Not connected
+ASX,error,0,,,Not connected
+HIMX,error,0,,,Not connected
+GRAB,error,0,,,Not connected
+BABA,error,0,,,Not connected
+PDD,error,0,,,Not connected
+NVS,error,0,,,Not connected
+RHHBY,error,0,,,Not connected
+AZN,error,0,,,Not connected
+NSRGY,error,0,,,Not connected
+SAP,error,0,,,Not connected
+SNY,error,0,,,Not connected
+UL,error,0,,,Not connected
+ZBH,ok,31117,2009-01-02,2026-09-28,
+CAT,ok,31119,2009-01-02,2026-09-28,
+DE,ok,3492,2024-09-27,2026-09-28,
