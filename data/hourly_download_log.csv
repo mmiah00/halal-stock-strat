@@ -76,31 +76,6 @@ TMO,ok,31111,2009-01-02,2026-09-28,
 EW,ok,31113,2009-01-02,2026-09-28,
 DXCM,ok,31108,2009-01-02,2026-09-28,
 IDXX,ok,21045,2014-09-26,2026-09-28,
-NEM,error,0,,,Not connected
-GOLD,error,0,,,Not connected
-RIO,error,0,,,Not connected
-BHP,error,0,,,Not connected
-VALE,error,0,,,Not connected
-NUE,error,0,,,Not connected
-STLD,error,0,,,Not connected
-APD,error,0,,,Not connected
-LIN,error,0,,,Not connected
-SHW,error,0,,,Not connected
-ECL,error,0,,,Not connected
-TSM,error,0,,,Not connected
-UMC,error,0,,,Not connected
-ASX,error,0,,,Not connected
-HIMX,error,0,,,Not connected
-GRAB,error,0,,,Not connected
-BABA,error,0,,,Not connected
-PDD,error,0,,,Not connected
-NVS,error,0,,,Not connected
-RHHBY,error,0,,,Not connected
-AZN,error,0,,,Not connected
-NSRGY,error,0,,,Not connected
-SAP,error,0,,,Not connected
-SNY,error,0,,,Not connected
-UL,error,0,,,Not connected
 ZBH,ok,31117,2009-01-02,2026-09-28,
 CAT,ok,31119,2009-01-02,2026-09-28,
 DE,ok,3492,2024-09-27,2026-09-28,
@@ -131,3 +106,28 @@ PSX,ok,25363,2012-04-12,2026-09-29,
 FANG,ok,24467,2012-10-12,2026-09-29,
 DVN,ok,31126,2009-01-02,2026-09-29,
 FCX,ok,31126,2009-01-02,2026-09-29,
+NEM,ok,31126,2009-01-02,2026-09-29,
+GOLD,ok,20967,2014-03-17,2026-09-29,
+RIO,ok,31126,2009-01-02,2026-09-29,
+BHP,ok,31126,2009-01-02,2026-09-29,
+VALE,ok,30543,2009-05-04,2026-09-29,
+NUE,ok,31126,2009-01-02,2026-09-29,
+STLD,ok,31129,2009-01-02,2026-09-29,
+APD,ok,31126,2009-01-02,2026-09-29,
+LIN,ok,13858,2018-10-31,2026-09-29,
+SHW,ok,31124,2009-01-02,2026-09-29,
+ECL,ok,31126,2009-01-02,2026-09-29,
+TSM,ok,31124,2009-01-02,2026-09-29,
+UMC,ok,31124,2009-01-02,2026-09-29,
+ASX,ok,14807,2018-04-19,2026-09-29,
+HIMX,ok,31129,2009-01-02,2026-09-29,
+GRAB,ok,10202,2020-12-01,2026-09-29,
+BABA,ok,21091,2014-09-19,2026-09-29,
+PDD,ok,14333,2018-07-26,2026-09-29,
+NVS,ok,31126,2009-01-02,2026-09-29,
+RHHBY,ok,31280,2009-01-02,2026-09-29,
+AZN,ok,1162,2026-02-02,2026-09-29,
+NSRGY,ok,31244,2009-01-02,2026-09-30,
+SAP,ok,31127,2009-01-02,2026-09-30,
+SNY,ok,31128,2009-01-02,2026-09-30,
+UL,ok,31128,2009-01-02,2026-09-30,
