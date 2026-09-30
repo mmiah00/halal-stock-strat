@@ -2,6 +2,9 @@ __pycache__/
 *.pyc
 live/*.log
 live/*_state.csv
+live/*_state.json
 live/KILL_SWITCH
+live/EMAIL_PAUSE
 live/trade_log.txt
 live/trade_log.csv
+live/email_credentials.env

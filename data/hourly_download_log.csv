@@ -76,33 +76,6 @@ TMO,ok,31111,2009-01-02,2026-09-28,
 EW,ok,31113,2009-01-02,2026-09-28,
 DXCM,ok,31108,2009-01-02,2026-09-28,
 IDXX,ok,21045,2014-09-26,2026-09-28,
-GE,error,0,,,Not connected
-HON,error,0,,,Not connected
-ETN,error,0,,,Not connected
-EMR,error,0,,,Not connected
-PH,error,0,,,Not connected
-ROK,error,0,,,Not connected
-ITW,error,0,,,Not connected
-FAST,error,0,,,Not connected
-URI,error,0,,,Not connected
-CSX,error,0,,,Not connected
-UNP,error,0,,,Not connected
-WM,error,0,,,Not connected
-RSG,error,0,,,Not connected
-PCAR,error,0,,,Not connected
-XOM,error,0,,,Not connected
-CVX,error,0,,,Not connected
-COP,error,0,,,Not connected
-EOG,error,0,,,Not connected
-OXY,error,0,,,Not connected
-SLB,error,0,,,Not connected
-HAL,error,0,,,Not connected
-MPC,error,0,,,Not connected
-VLO,error,0,,,Not connected
-PSX,error,0,,,Not connected
-FANG,error,0,,,Not connected
-DVN,error,0,,,Not connected
-FCX,error,0,,,Not connected
 NEM,error,0,,,Not connected
 GOLD,error,0,,,Not connected
 RIO,error,0,,,Not connected
@@ -131,3 +104,30 @@ UL,error,0,,,Not connected
 ZBH,ok,31117,2009-01-02,2026-09-28,
 CAT,ok,31119,2009-01-02,2026-09-28,
 DE,ok,3492,2024-09-27,2026-09-28,
+GE,ok,31126,2009-01-02,2026-09-29,
+HON,ok,31126,2009-01-02,2026-09-29,
+ETN,ok,31126,2009-01-02,2026-09-29,
+EMR,ok,31126,2009-01-02,2026-09-29,
+PH,ok,31126,2009-01-02,2026-09-29,
+ROK,ok,31126,2009-01-02,2026-09-29,
+ITW,ok,31126,2009-01-02,2026-09-29,
+FAST,ok,31128,2009-01-02,2026-09-29,
+URI,ok,31124,2009-01-02,2026-09-29,
+CSX,ok,18882,2015-12-22,2026-09-29,
+UNP,ok,31124,2009-01-02,2026-09-29,
+WM,ok,31124,2009-01-02,2026-09-29,
+RSG,ok,31126,2009-01-02,2026-09-29,
+PCAR,ok,31129,2009-01-02,2026-09-29,
+XOM,ok,31124,2009-01-02,2026-09-29,
+CVX,ok,31126,2009-01-02,2026-09-29,
+COP,ok,31126,2009-01-02,2026-09-29,
+EOG,ok,31126,2009-01-02,2026-09-29,
+OXY,ok,31126,2009-01-02,2026-09-29,
+SLB,ok,31124,2009-01-02,2026-09-29,
+HAL,ok,31126,2009-01-02,2026-09-29,
+MPC,ok,26774,2011-06-23,2026-09-29,
+VLO,ok,31124,2009-01-02,2026-09-29,
+PSX,ok,25363,2012-04-12,2026-09-29,
+FANG,ok,24467,2012-10-12,2026-09-29,
+DVN,ok,31126,2009-01-02,2026-09-29,
+FCX,ok,31126,2009-01-02,2026-09-29,
