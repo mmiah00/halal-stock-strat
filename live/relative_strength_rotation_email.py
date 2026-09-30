@@ -303,6 +303,7 @@ def main() -> int:
                                       {'cash': state['cash'], 'holdings': state['holdings']})
         if send_email(subject, body):
             state['last_rebalance_month'] = month_key
+            state['last_suggestion'] = {'month': month_key, 'computed_at': now.isoformat(), 'orders': []}
             save_state(state)
         return 0
 
@@ -318,6 +319,7 @@ def main() -> int:
 
     if send_email(subject, body):
         new_state['last_rebalance_month'] = month_key
+        new_state['last_suggestion'] = {'month': month_key, 'computed_at': now.isoformat(), 'orders': orders}
         save_state(new_state)
         log.info('=== run complete, state advanced to %s ===', month_key)
     else:
