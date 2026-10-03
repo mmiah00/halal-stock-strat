@@ -55,6 +55,20 @@ def is_first_trading_day_of_month(today: pd.Timestamp) -> bool:
     return prev_session.month != today_naive.month
 
 
+def is_market_open_now(now: pd.Timestamp) -> bool:
+    """True iff `now` falls within a live NYSE regular-hours session (not just 'today is a
+    trading day' — the actual open/close window). Used by the intraday variant, which can be
+    invoked by cron at any time of day and needs to no-op outside market hours itself."""
+    now_utc = pd.Timestamp(now)
+    now_utc = now_utc.tz_localize('UTC') if now_utc.tzinfo is None else now_utc.tz_convert('UTC')
+    nyse = mcal.get_calendar('NYSE')
+    schedule = nyse.schedule(start_date=(now_utc - pd.Timedelta(days=2)).date(), end_date=(now_utc + pd.Timedelta(days=1)).date())
+    if schedule.empty:
+        return False
+    in_session = (schedule['market_open'] <= now_utc) & (now_utc <= schedule['market_close'])
+    return bool(in_session.any())
+
+
 # --------------------------------------------------------------------------------------
 # Universe and signal
 # --------------------------------------------------------------------------------------
@@ -133,6 +147,71 @@ def compute_target_basket(daily_closes: dict[str, pd.Series]) -> tuple[list[str]
 
     ranked = score.sort_values(ascending=False)
     selected = ranked.head(TOP_N).index.tolist()
+    return selected, ranked, last_price
+
+
+# --------------------------------------------------------------------------------------
+# Intraday variant — same shape as the two functions above, but on raw bars (e.g. hourly)
+# instead of monthly-resampled closes. Used only by the 2-hour-rebalance script; the monthly
+# scripts never call these. NOT backtested at this frequency — see that script's docstring.
+# --------------------------------------------------------------------------------------
+def fetch_recent_intraday_closes(ib: IB, universe: list[str], duration: str = '2 D',
+                                  bar_size: str = '1 hour') -> dict[str, pd.Series]:
+    """Short, fast live-data pull — a couple of days of intraday bars per ticker, enough for
+    a several-bar lookback with some buffer. Not a historical backfill (see the hourly-bars
+    notebook-conversion work for that); this is meant to be re-run every rebalance cycle."""
+    closes = {}
+    for i, ticker in enumerate(universe, 1):
+        try:
+            contract = Stock(ticker, 'SMART', 'USD')
+            qualified = ib.qualifyContracts(contract)
+            if not qualified or contract.conId == 0:
+                log.warning('skip %s: could not qualify contract', ticker)
+                continue
+            bars = ib.reqHistoricalData(
+                contract, endDateTime='', durationStr=duration, barSizeSetting=bar_size,
+                whatToShow='TRADES', useRTH=True, formatDate=2, keepUpToDate=False,
+            )
+            frame = normalize_bars(bars)
+            if frame.empty:
+                log.warning('skip %s: no bars returned', ticker)
+                continue
+            closes[ticker] = frame['close']
+        except Exception:
+            log.exception('skip %s: error fetching bars', ticker)
+        ib.sleep(PACING_SLEEP_SECONDS)
+        if i % 20 == 0:
+            log.info('fetched %d/%d tickers', i, len(universe))
+    return closes
+
+
+def compute_target_basket_intraday(intraday_closes: dict[str, pd.Series], lookback_bars: int, top_n: int,
+                                    min_universe: int, bar_minutes: int = 60) -> tuple[list[str], pd.Series, pd.Series]:
+    """Rank by trailing return over `lookback_bars` intraday bars (not months). Same shape and
+    same MIN_UNIVERSE-fallback behavior as compute_target_basket. Drops the most recent bar if
+    it's still in progress (mirrors compute_target_basket dropping the in-progress month) —
+    otherwise a half-formed current bar would get scored as if it were a complete period."""
+    if not intraday_closes:
+        log.error('no tickers returned any intraday bars — cannot compute a ranking this run')
+        return [], pd.Series(dtype=float), pd.Series(dtype=float)
+
+    price_panel = pd.DataFrame(intraday_closes).sort_index()
+    now = pd.Timestamp.now(tz='UTC')
+    if len(price_panel) and (now - price_panel.index[-1]) < pd.Timedelta(minutes=bar_minutes):
+        price_panel = price_panel.iloc[:-1]
+
+    if len(price_panel) <= lookback_bars:
+        return [], pd.Series(dtype=float), price_panel.iloc[-1] if len(price_panel) else pd.Series(dtype=float)
+
+    score = (price_panel.iloc[-1] / price_panel.iloc[-1 - lookback_bars] - 1).dropna()
+    last_price = price_panel.ffill().iloc[-1]
+
+    if len(score) < min_universe:
+        log.warning('only %d scoreable names (< min_universe=%d) — holding current basket unchanged', len(score), min_universe)
+        return [], score, last_price
+
+    ranked = score.sort_values(ascending=False)
+    selected = ranked.head(top_n).index.tolist()
     return selected, ranked, last_price
 
 

@@ -3,8 +3,13 @@ __pycache__/
 live/*.log
 live/*_state.csv
 live/*_state.json
-live/KILL_SWITCH
+live/*_state.txt
+live/KILL_SWITCH*
 live/EMAIL_PAUSE
-live/trade_log.txt
-live/trade_log.csv
+live/*trade_log.txt
+live/*trade_log.csv
 live/email_credentials.env
+live/webull_credentials.env
+webull_trade_sdk.log
+webull_data_sdk.log
+conf/
