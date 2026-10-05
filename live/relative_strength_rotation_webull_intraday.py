@@ -40,6 +40,16 @@ SAFETY MODEL — same shape as the monthly Webull script:
     at least REBALANCE_INTERVAL_HOURS have passed since that timestamp. Dry runs never advance
     this timestamp, same reasoning as the monthly scripts.
   - Trade log, per-order sanity cap, preview-before-place: identical to the monthly script.
+
+TRADE POP-UP: fires once per cycle (not per order) whenever sells or buys actually happen,
+dry-run or real — see webull_common.send_trade_popup. A Windows toast notification can only
+show 3 lines of text (confirmed by testing two different APIs on 2026-10-05, not a library
+limitation), so the toast shows a timestamp, a sell/buy count, and net realized P&L; clicking
+it opens a full HTML table (one file per cycle, kept in live/trade_popups/, never overwritten
+so an old toast always opens the numbers that were true when it fired). Realized P&L only
+counts this cycle's sells against Webull's own reported cost basis — buys aren't profit yet,
+they're capital being deployed. This requires WSL-to-Windows interop (powershell.exe) to be
+reachable; if it isn't, the popup silently logs a warning and the trading logic is unaffected.
 """
 from __future__ import annotations
 
@@ -62,7 +72,8 @@ from rotation_common import (
     compute_target_basket_intraday, build_orders as _build_orders,
 )
 from webull_common import (
-    build_trade_client, get_free_cash_and_positions, managed_nav,
+    build_trade_client, get_free_cash_and_positions, managed_nav, get_cost_basis,
+    compute_realized_pnl, send_trade_popup,
     place_order as _place_order, confirm_live_authorized as _confirm_live_authorized,
 )
 
@@ -219,6 +230,15 @@ def main() -> int:
     buys = [o for o in orders if o['side'] == 'BUY']
     log.info('%d sell orders, %d buy orders to compute/place', len(sells), len(buys))
 
+    # Cost basis for the realized-P&L popup must be read BEFORE any sell executes — Webull's
+    # own position data is the source of truth for what was actually paid, not anything this
+    # script tracks itself.
+    try:
+        cost_basis = get_cost_basis(trade_client, account_id)
+    except Exception:
+        log.exception('could not read cost basis — trade popup will show $0.00 realized P&L this cycle')
+        cost_basis = {}
+
     instrument_cache: dict[str, str] = {}
     for order_spec in sells:
         place_order(trade_client, data_client, account_id, order_spec, instrument_cache, dry_run)
@@ -231,6 +251,10 @@ def main() -> int:
         buys = [o for o in orders if o['side'] == 'BUY']
     for order_spec in buys:
         place_order(trade_client, data_client, account_id, order_spec, instrument_cache, dry_run)
+
+    if sells or buys:
+        net_profit = compute_realized_pnl(sells, cost_basis, log)
+        send_trade_popup(now, sells, buys, net_profit, dry_run, log)
 
     if not dry_run:
         write_last_rebalance_time(now)

@@ -13,3 +13,4 @@ live/webull_credentials.env
 webull_trade_sdk.log
 webull_data_sdk.log
 conf/
+live/trade_popups/

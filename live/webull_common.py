@@ -236,3 +236,160 @@ def place_order(trade_client: TradeClient, data_client: DataClient, account_id: 
 
 def confirm_live_authorized(dry_run_flag: bool, cli_confirm_live: bool) -> bool:
     return (not dry_run_flag) and cli_confirm_live and os.environ.get('CONFIRM_LIVE') == 'YES'
+
+
+# --------------------------------------------------------------------------------------
+# Trade pop-up (Windows toast + full-detail HTML) — fires once per rebalance cycle, not per
+# order. Resilience is deliberate: every entry point here is meant to be wrapped by the
+# caller in a try/except, since a notification failure must never be allowed to affect
+# trading logic. See the module-level note in relative_strength_rotation_webull_intraday.py
+# for why this exists and what was verified (Windows toast notifications genuinely cap at 3
+# lines of text — confirmed by testing, not a library quirk — hence the toast-plus-HTML split).
+# --------------------------------------------------------------------------------------
+POPUP_DIR = HERE / 'trade_popups'
+MAX_POPUP_FILES = 200  # keep this bounded; each cycle writes a new file, this runs unattended
+
+
+def get_cost_basis(trade_client: TradeClient, account_id: str) -> dict[str, float]:
+    """{ticker: average cost per share}, straight from Webull's own position data — this is
+    the broker's real cost basis, not something this project tracks itself, so it stays
+    correct even if a position was opened before this popup feature existed."""
+    positions_resp = _as_json(trade_client.account_v2.get_account_position(account_id))
+    rows = positions_resp if isinstance(positions_resp, list) else []
+    basis = {}
+    for row in rows:
+        symbol = row.get('symbol')
+        cost_price = row.get('cost_price')
+        if symbol and cost_price is not None:
+            basis[symbol] = float(cost_price)
+    return basis
+
+
+def compute_realized_pnl(sells: list[dict], cost_basis: dict[str, float], log) -> float:
+    """Sum of (sell price - cost basis) x shares, across this cycle's sell orders only — buys
+    don't realize anything yet, they're just capital being deployed. This is the standard
+    meaning of 'profit on a trade': gain or loss on what was actually closed, not cash flow."""
+    total = 0.0
+    for order in sells:
+        ticker = order['ticker']
+        basis = cost_basis.get(ticker)
+        if basis is None:
+            log.warning('no cost basis found for %s — excluding it from the realized P&L total', ticker)
+            continue
+        total += (order['ref_price'] - basis) * order['shares']
+    return total
+
+
+def _cleanup_old_popups() -> None:
+    files = sorted(POPUP_DIR.glob('trade_*.html'), key=lambda p: p.stat().st_mtime)
+    for stale in files[:-MAX_POPUP_FILES]:
+        stale.unlink(missing_ok=True)
+
+
+def build_trade_detail_html(timestamp: pd.Timestamp, sells: list[dict], buys: list[dict], net_profit: float) -> Path:
+    """Writes one HTML file per cycle (never overwritten) and returns its path, so clicking
+    an older toast notification later always opens the numbers that were true at that time,
+    not whatever the most recent cycle happens to be."""
+    POPUP_DIR.mkdir(parents=True, exist_ok=True)
+
+    def rows(orders):
+        return ''.join(
+            f'<tr><td class="t">{o["ticker"]}</td><td class="n">{o["shares"]:.4f}</td>'
+            f'<td class="n">${o["notional"]:,.2f}</td></tr>'
+            for o in orders
+        ) or '<tr><td colspan="3" class="empty">none this cycle</td></tr>'
+
+    pnl_class = 'pos' if net_profit >= 0 else 'neg'
+    html = f'''<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Rotation trade — {timestamp.isoformat()}</title>
+<style>
+  body {{ font-family: -apple-system, "Segoe UI", sans-serif; background: #faf9f5; color: #141413;
+         padding: 32px; max-width: 700px; margin: 0 auto; }}
+  h1 {{ font-size: 20px; margin-bottom: 4px; }}
+  .sub {{ color: #898781; font-size: 13px; margin-bottom: 24px; }}
+  table {{ width: 100%; border-collapse: collapse; margin-bottom: 20px; }}
+  th {{ text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+        color: #898781; padding: 6px 10px; border-bottom: 2px solid #e1e0d9; }}
+  td {{ padding: 8px 10px; border-bottom: 1px solid #e1e0d9; font-size: 14px; }}
+  td.n {{ text-align: right; font-variant-numeric: tabular-nums; }}
+  td.empty {{ color: #898781; font-style: italic; text-align: center; }}
+  .cols {{ display: flex; gap: 24px; }}
+  .col {{ flex: 1; }}
+  .sell th {{ color: #d03b3b; }}
+  .buy th {{ color: #0ca30c; }}
+  .pnl {{ font-size: 15px; padding: 16px 20px; border-radius: 10px; background: #f2f1ec; }}
+  .pnl .amt {{ font-size: 28px; font-weight: 600; font-family: ui-monospace, monospace; }}
+  .pos {{ color: #0ca30c; }}
+  .neg {{ color: #d03b3b; }}
+</style></head><body>
+  <h1>Relative strength rotation — trade executed</h1>
+  <div class="sub">{timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')}</div>
+  <div class="cols">
+    <div class="col">
+      <table class="sell"><thead><tr><th>Sell</th><th>Shares</th><th>Amount</th></tr></thead>
+        <tbody>{rows(sells)}</tbody></table>
+    </div>
+    <div class="col">
+      <table class="buy"><thead><tr><th>Buy</th><th>Shares</th><th>Amount</th></tr></thead>
+        <tbody>{rows(buys)}</tbody></table>
+    </div>
+  </div>
+  <div class="pnl">Net realized P&amp;L on this cycle's sells
+    <div class="amt {pnl_class}">{'+' if net_profit >= 0 else ''}{net_profit:,.2f}</div>
+    <div style="color:#898781;font-size:12px;margin-top:4px">
+      Only sells realize a gain/loss — buys are capital being deployed, not profit yet.</div>
+  </div>
+</body></html>'''
+
+    path = POPUP_DIR / f'trade_{timestamp.strftime("%Y%m%dT%H%M%SZ")}.html'
+    path.write_text(html)
+    _cleanup_old_popups()
+    return path
+
+
+def send_trade_popup(timestamp: pd.Timestamp, sells: list[dict], buys: list[dict],
+                      net_profit: float, dry_run: bool, log) -> None:
+    """Writes the detail HTML, then fires a 3-line Windows toast (the hard limit on a Windows
+    toast's text content — confirmed by testing, see relative_strength_rotation_webull_intraday.py)
+    whose click action opens that HTML. Requires running where WSL-to-Windows interop works
+    (powershell.exe reachable) — if it isn't, this logs a warning and does nothing else; a
+    notification failure must never block or fail the actual trading run."""
+    import subprocess
+
+    try:
+        detail_path = build_trade_detail_html(timestamp, sells, buys, net_profit)
+        win_path = subprocess.run(['wslpath', '-w', str(detail_path)], capture_output=True, text=True, check=True).stdout.strip()
+
+        prefix = '[DRY RUN] ' if dry_run else ''
+        line1 = f'{prefix}{timestamp.strftime("%Y-%m-%d %H:%M %Z")}'
+        line2 = f'{len(sells)} sell(s), {len(buys)} buy(s) this cycle'
+        sign = '+' if net_profit >= 0 else ''
+        line3 = f'Net realized P&L: {sign}${net_profit:,.2f} (click for detail)'
+
+        ps_script = f'''
+Import-Module BurntToast
+$t1 = New-BTText -Text {_ps_quote(line1)}
+$t2 = New-BTText -Text {_ps_quote(line2)}
+$t3 = New-BTText -Text {_ps_quote(line3)}
+$binding = New-BTBinding -Children $t1, $t2, $t3
+$visual = New-BTVisual -BindingGeneric $binding
+$content = New-BTContent -Visual $visual -Launch {_ps_quote('file:///' + win_path)} -ActivationType Protocol
+Submit-BTNotification -Content $content
+'''
+        result = subprocess.run(
+            ['powershell.exe', '-ExecutionPolicy', 'Bypass', '-Command', ps_script],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            log.warning('trade popup toast failed (non-fatal): %s', result.stderr[:500])
+        else:
+            log.info('trade popup sent, detail at %s', detail_path)
+    except Exception:
+        log.exception('could not send trade popup (non-fatal, trading was not affected)')
+
+
+def _ps_quote(s: str) -> str:
+    """Single-quoted PowerShell string literal — doubling embedded single quotes is PowerShell's
+    own escaping rule, not a security workaround, so this is safe for the trusted, locally-built
+    strings this module passes through it (tickers, dollar amounts, a local file path)."""
+    return "'" + s.replace("'", "''") + "'"
