@@ -45,7 +45,7 @@ TRADE POP-UP: fires once per cycle (not per order) whenever sells or buys actual
 dry-run or real — see webull_common.send_trade_popup. A Windows toast notification can only
 show 3 lines of text (confirmed by testing two different APIs on 2026-10-05, not a library
 limitation), so the toast shows a timestamp, a sell/buy count, and net realized P&L; clicking
-it opens a full HTML table (one file per cycle, kept in live/trade_popups/, never overwritten
+it opens a full HTML table (one file per cycle, kept in relative_strength_rotation/live/trade_popups/, never overwritten
 so an old toast always opens the numbers that were true when it fired). Realized P&L only
 counts this cycle's sells against Webull's own reported cost basis — buys aren't profit yet,
 they're capital being deployed. This requires WSL-to-Windows interop (powershell.exe) to be
@@ -278,5 +278,5 @@ if __name__ == '__main__':
 # throws out every invocation outside real trading hours, so an imprecise cron window is
 # fine). Deliberately no --confirm-live / CONFIRM_LIVE here either.
 #
-# 0 */2 * * * /home/mmiah/.venv/bin/python3 /home/mmiah/halal-stock-strat/live/relative_strength_rotation_webull_intraday.py >> /home/mmiah/halal-stock-strat/live/webull_intraday_cron.log 2>&1
+# 0 */2 * * * /home/mmiah/.venv/bin/python3 /home/mmiah/halal-stock-strat/relative_strength_rotation/live/relative_strength_rotation_webull_intraday.py >> /home/mmiah/halal-stock-strat/relative_strength_rotation/live/webull_intraday_cron.log 2>&1
 # --------------------------------------------------------------------------------------

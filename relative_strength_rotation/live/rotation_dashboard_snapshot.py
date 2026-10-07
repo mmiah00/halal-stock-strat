@@ -1,4 +1,4 @@
-"""Builds live/dashboard_snapshot.json: a read-only snapshot of the relative-strength rotation
+"""Builds relative_strength_rotation/live/dashboard_snapshot.json: a read-only snapshot of the relative-strength rotation
 strategy's hypothetical $150 portfolio, for the website's live dashboard tab.
 
 This NEVER places an order and NEVER mutates rotation_email_state.json — it only reads that

@@ -25,7 +25,7 @@ try:
 except ImportError as exc:
     raise ImportError('Install pandas_market_calendars first: pip install pandas_market_calendars') from exc
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent  # .../live -> .../relative_strength_rotation -> repo root
 EQUITIES_LIST_PATH = REPO_ROOT / 'equities-list.csv'
 
 # Strategy parameters — identical to relative_strength_rotation_ibkr_backtest.ipynb.

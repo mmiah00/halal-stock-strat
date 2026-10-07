@@ -227,5 +227,5 @@ if __name__ == '__main__':
 # all three (IBKR live/dry-run, email, Webull) don't open connections at the same instant.
 # Deliberately no --confirm-live / CONFIRM_LIVE here either — see module docstring.
 #
-# 45 8 * * 1-5 /home/mmiah/.venv/bin/python3 /home/mmiah/halal-stock-strat/live/relative_strength_rotation_webull.py >> /home/mmiah/halal-stock-strat/live/webull_cron.log 2>&1
+# 45 8 * * 1-5 /home/mmiah/.venv/bin/python3 /home/mmiah/halal-stock-strat/relative_strength_rotation/live/relative_strength_rotation_webull.py >> /home/mmiah/halal-stock-strat/relative_strength_rotation/live/webull_cron.log 2>&1
 # --------------------------------------------------------------------------------------

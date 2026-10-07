@@ -286,7 +286,7 @@ if __name__ == '__main__':
 # decide whether it's actually a rebalance day. Adjust the time for your server's local
 # timezone — this assumes the box is set to America/New_York.
 #
-# CONFIRM_LIVE=YES 35 9 * * 1-5 /home/mmiah/.venv/bin/python3 /home/mmiah/halal-stock-strat/live/relative_strength_rotation_live.py --confirm-live >> /home/mmiah/halal-stock-strat/live/cron.log 2>&1
+# CONFIRM_LIVE=YES 35 9 * * 1-5 /home/mmiah/.venv/bin/python3 /home/mmiah/halal-stock-strat/relative_strength_rotation/live/relative_strength_rotation_live.py --confirm-live >> /home/mmiah/halal-stock-strat/relative_strength_rotation/live/cron.log 2>&1
 #
 # Leaving CONFIRM_LIVE unset (or DRY_RUN = True above) keeps every run in dry-run mode
 # regardless of this cron line, which is the safer way to first watch it operate for a

@@ -336,5 +336,5 @@ if __name__ == '__main__':
 # script's 8:35 slot, so the two don't open IBKR connections at the same instant) and
 # no-ops on every day except each month's first NYSE trading session.
 #
-# 40 8 * * 1-5 /home/mmiah/.venv/bin/python3 /home/mmiah/halal-stock-strat/live/relative_strength_rotation_email.py >> /home/mmiah/halal-stock-strat/live/email_cron.log 2>&1
+# 40 8 * * 1-5 /home/mmiah/.venv/bin/python3 /home/mmiah/halal-stock-strat/relative_strength_rotation/live/relative_strength_rotation_email.py >> /home/mmiah/halal-stock-strat/relative_strength_rotation/live/email_cron.log 2>&1
 # --------------------------------------------------------------------------------------
