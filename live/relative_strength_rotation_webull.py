@@ -49,7 +49,7 @@ from rotation_common import (
     compute_target_basket, build_orders as _build_orders,
 )
 from webull_common import (
-    build_trade_client, get_free_cash_and_positions, managed_nav,
+    build_trade_client, get_free_cash_and_positions, managed_nav, send_failure_popup,
     place_order as _place_order, confirm_live_authorized as _confirm_live_authorized,
 )
 
@@ -117,8 +117,8 @@ def append_trade_log(timestamp: pd.Timestamp, side: str, ticker: str, status: st
                           f'{balance:.2f}' if balance is not None else ''])
 
 
-def place_order(trade_client, data_client, account_id, order_spec, instrument_cache, dry_run) -> None:
-    _place_order(trade_client, data_client, account_id, order_spec, instrument_cache, dry_run, log, append_trade_log)
+def place_order(trade_client, account_id, order_spec, dry_run) -> None:
+    _place_order(trade_client, account_id, order_spec, dry_run, log, append_trade_log)
 
 
 def confirm_live_authorized(cli_confirm_live: bool) -> bool:
@@ -154,9 +154,10 @@ def main() -> int:
     log.info('=== relative strength rotation Webull run: %s (dry_run=%s) ===', now.isoformat(), dry_run)
 
     try:
-        trade_client, data_client, account_id = build_trade_client(log)
-    except Exception:
+        trade_client, account_id = build_trade_client(log)
+    except Exception as exc:
         log.exception('could not set up Webull trade client')
+        send_failure_popup('Webull connection/auth', str(exc), LOG_PATH, log)
         return 1
     log.info('using Webull account_id=%s', account_id)
 
@@ -164,8 +165,9 @@ def main() -> int:
     ib = IB()
     try:
         ib.connect(IB_HOST, IB_PORT, clientId=IB_CLIENT_ID, readonly=True, timeout=20)
-    except Exception:
+    except Exception as exc:
         log.exception('could not connect to IBKR at %s:%d for ranking data', IB_HOST, IB_PORT)
+        send_failure_popup('IBKR connection', str(exc), LOG_PATH, log)
         return 1
 
     try:
@@ -199,9 +201,8 @@ def main() -> int:
     buys = [o for o in orders if o['side'] == 'BUY']
     log.info('%d sell orders, %d buy orders to compute/place', len(sells), len(buys))
 
-    instrument_cache: dict[str, str] = {}
     for order_spec in sells:
-        place_order(trade_client, data_client, account_id, order_spec, instrument_cache, dry_run)
+        place_order(trade_client, account_id, order_spec, dry_run)
     if sells and not dry_run:
         time.sleep(FILL_WAIT_SECONDS)
         free_cash, current_positions = get_free_cash_and_positions(trade_client, account_id)
@@ -210,7 +211,7 @@ def main() -> int:
                                 INVESTABLE_FRACTION, MAX_ORDER_FRACTION_OF_NAV, MIN_TRADE_NOTIONAL)
         buys = [o for o in orders if o['side'] == 'BUY']
     for order_spec in buys:
-        place_order(trade_client, data_client, account_id, order_spec, instrument_cache, dry_run)
+        place_order(trade_client, account_id, order_spec, dry_run)
 
     if not dry_run:
         write_last_rebalance_month(month_key)

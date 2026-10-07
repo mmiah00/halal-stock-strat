@@ -22,7 +22,6 @@ import pandas as pd
 try:
     from webull.core.client import ApiClient
     from webull.trade.trade_client import TradeClient
-    from webull.data.data_client import DataClient
 except ImportError as exc:
     raise ImportError('Install the SDK first: pip install webull-openapi-python-sdk') from exc
 
@@ -71,19 +70,19 @@ def _as_json(response):
     return response
 
 
-def build_trade_client(log) -> tuple[TradeClient, DataClient, str]:
-    """Connects to Webull and resolves the account_id to trade against. Returns (trade_client,
-    data_client, account_id). data_client is separate because instrument lookup (ticker ->
-    instrument_id) lives on the market-data side, not the trading side — confirmed by testing:
-    the trade-side TradeInstrument.get_trade_security_detail() 404s (a stale/broken path in
-    this SDK version), while DataClient.instrument.list_instruments() works correctly.
-    `log` is the caller's logger, so these messages land in the right log file."""
+def build_trade_client(log) -> tuple[TradeClient, str]:
+    """Connects to Webull and resolves the account_id to trade against. Returns
+    (trade_client, account_id). `log` is the caller's logger, so these messages land in the
+    right log file.
+
+    There used to be a DataClient here too, for ticker -> instrument_id lookup before placing
+    an order. Removed once live order testing on 2026-10-05 showed 'symbol' alone is accepted
+    by the order endpoint and instrument_id isn't needed for that — see place_order."""
     creds = load_webull_credentials()
     if creds is None:
         raise RuntimeError('Webull credentials not configured — see webull_credentials.env.example')
     api_client = ApiClient(creds['app_key'], creds['app_secret'], WEBULL_REGION_ID)
     trade_client = TradeClient(api_client)
-    data_client = DataClient(api_client)
 
     account_id = creds.get('account_id')
     if not account_id:
@@ -93,7 +92,7 @@ def build_trade_client(log) -> tuple[TradeClient, DataClient, str]:
         account_id = _first_account_id(accounts)
         if not account_id:
             raise RuntimeError('could not determine an account_id from get_account_list() — pin WEBULL_ACCOUNT_ID manually')
-    return trade_client, data_client, account_id
+    return trade_client, account_id
 
 
 def _first_account_id(accounts_response) -> str | None:
@@ -164,31 +163,11 @@ def managed_nav(free_cash: float, real_positions: dict[str, float], last_price, 
     return free_cash + deployed
 
 
-def resolve_instrument_id(data_client: DataClient, symbol: str, cache: dict[str, str], log) -> str | None:
-    """Confirmed working (2026-10-02) against the real API: DataClient.instrument.list_instruments
-    returns {'data': [{'symbol', 'instrument_id', 'fractionable', ...}]}."""
-    if symbol in cache:
-        return cache[symbol]
-    try:
-        resp = _as_json(data_client.instrument.list_instruments(symbols=[symbol], category='US_STOCK'))
-        rows = resp.get('data', []) if isinstance(resp, dict) else []
-        match = next((r for r in rows if r.get('symbol') == symbol), rows[0] if rows else None)
-        instrument_id = match.get('instrument_id') if match else None
-        if instrument_id:
-            cache[symbol] = instrument_id
-        else:
-            log.warning('list_instruments returned no match for %s: %s', symbol, resp)
-        return instrument_id
-    except Exception:
-        log.exception('could not resolve instrument_id for %s', symbol)
-        return None
-
-
 # --------------------------------------------------------------------------------------
 # Order placement
 # --------------------------------------------------------------------------------------
-def place_order(trade_client: TradeClient, data_client: DataClient, account_id: str, order_spec: dict,
-                 instrument_cache: dict[str, str], dry_run: bool, log, append_trade_log) -> None:
+def place_order(trade_client: TradeClient, account_id: str, order_spec: dict,
+                 dry_run: bool, log, append_trade_log) -> None:
     """append_trade_log(timestamp, side, ticker, status, balance) is injected by the caller so
     each script's trade log stays separate (different files for the monthly vs. intraday
     scripts), while the placement logic itself stays identical."""
@@ -199,32 +178,36 @@ def place_order(trade_client: TradeClient, data_client: DataClient, account_id: 
         log.info('DRY-RUN %s %s shares=%.6f ref_price=%.4f notional=$%.2f', side, ticker, shares, ref_price, order_spec['notional'])
         status = 'DRY_RUN'
     else:
-        instrument_id = resolve_instrument_id(data_client, ticker, instrument_cache, log)
-        if instrument_id is None:
-            status = 'FAILED: could not resolve instrument_id'
-        else:
-            offset = 1 + LIMIT_OFFSET_BPS / 10_000 * (1 if side == 'BUY' else -1)
-            limit_price = round(ref_price * offset, 2)
-            new_order = {
-                'client_order_id': str(uuid.uuid4()),
-                'market': WEBULL_MARKET,
-                'instrument_type': 'STOCK',
-                'instrument_id': instrument_id,
-                'side': side,
-                'order_type': 'LIMIT',
-                'limit_price': limit_price,
-                'qty': round(shares, 6),
-                'tif': 'DAY',
-            }
-            try:
-                preview = _as_json(trade_client.order_v3.preview_order(account_id, [new_order]))
-                log.info('preview_order response for %s %s: %s', side, ticker, preview)
-                trade = _as_json(trade_client.order_v3.place_order(account_id, [new_order]))
-                log.info('place_order response for %s %s: %s', side, ticker, trade)
-                status = 'SUCCESS'
-            except Exception as exc:
-                log.exception('order failed for %s %s', side, ticker)
-                status = f'FAILED: {exc}'
+        offset = 1 + LIMIT_OFFSET_BPS / 10_000 * (1 if side == 'BUY' else -1)
+        limit_price = round(ref_price * offset, 2)
+        # Field names below were confirmed by live trial against the real order/preview
+        # endpoint on 2026-10-05 — several differ from what the SDK's own bundled classes
+        # suggest (e.g. 'qty'/'tif' there vs. 'quantity'/'time_in_force' here), and
+        # 'entrust_type'/'support_trading_session' aren't in the SDK's builders at all.
+        # 'symbol' alone is sufficient — instrument_id (from list_instruments) is NOT
+        # required for placing an order, only for other lookups.
+        new_order = {
+            'client_order_id': str(uuid.uuid4()),
+            'market': WEBULL_MARKET,
+            'instrument_type': 'EQUITY',
+            'symbol': ticker,
+            'side': side,
+            'order_type': 'LIMIT',
+            'limit_price': limit_price,
+            'entrust_type': 'QTY',
+            'quantity': round(shares, 5),  # confirmed limit (2026-10-05): fractional order quantity allows at most 5 decimal places
+            'time_in_force': 'DAY',
+            'support_trading_session': 'N',  # regular trading hours only, matching useRTH=True on the IBKR side
+        }
+        try:
+            preview = _as_json(trade_client.order_v3.preview_order(account_id, [new_order]))
+            log.info('preview_order response for %s %s: %s', side, ticker, preview)
+            trade = _as_json(trade_client.order_v3.place_order(account_id, [new_order]))
+            log.info('place_order response for %s %s: %s', side, ticker, trade)
+            status = 'SUCCESS'
+        except Exception as exc:
+            log.exception('order failed for %s %s', side, ticker)
+            status = f'FAILED: {exc}'
 
     try:
         free_cash, _ = get_free_cash_and_positions(trade_client, account_id)
@@ -386,6 +369,46 @@ Submit-BTNotification -Content $content
             log.info('trade popup sent, detail at %s', detail_path)
     except Exception:
         log.exception('could not send trade popup (non-fatal, trading was not affected)')
+
+
+def send_failure_popup(stage: str, error_message: str, log_path: Path, log) -> None:
+    """Fires a 3-line Windows toast when a scheduled cycle fails before it ever gets to placing
+    orders (e.g. Webull auth/connection failed, IBKR unreachable) — the silent-failure case that
+    send_trade_popup doesn't cover, since that one only fires once a cycle actually has sells or
+    buys to report. Clicking the toast opens the script's own log file (no separate detail page
+    needed here — the log already has the full traceback). Same resilience contract as
+    send_trade_popup: wrapped in try/except so a notification problem never raises into the
+    caller, which is already in its own failure path when this is called."""
+    import subprocess
+
+    try:
+        win_log_path = subprocess.run(['wslpath', '-w', str(log_path)], capture_output=True, text=True, check=True).stdout.strip()
+
+        timestamp = pd.Timestamp.now(tz='UTC')
+        line1 = f'{timestamp.strftime("%Y-%m-%d %H:%M %Z")}'
+        line2 = f'TRADING CYCLE FAILED: {stage}'
+        line3 = f'{error_message[:120]} (click for log)'
+
+        ps_script = f'''
+Import-Module BurntToast
+$t1 = New-BTText -Text {_ps_quote(line1)}
+$t2 = New-BTText -Text {_ps_quote(line2)}
+$t3 = New-BTText -Text {_ps_quote(line3)}
+$binding = New-BTBinding -Children $t1, $t2, $t3
+$visual = New-BTVisual -BindingGeneric $binding
+$content = New-BTContent -Visual $visual -Launch {_ps_quote('file:///' + win_log_path)} -ActivationType Protocol
+Submit-BTNotification -Content $content
+'''
+        result = subprocess.run(
+            ['powershell.exe', '-ExecutionPolicy', 'Bypass', '-Command', ps_script],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            log.warning('failure popup toast failed (non-fatal): %s', result.stderr[:500])
+        else:
+            log.info('failure popup sent for stage=%s', stage)
+    except Exception:
+        log.exception('could not send failure popup (non-fatal)')
 
 
 def _ps_quote(s: str) -> str:

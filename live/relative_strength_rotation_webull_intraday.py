@@ -50,6 +50,13 @@ so an old toast always opens the numbers that were true when it fired). Realized
 counts this cycle's sells against Webull's own reported cost basis — buys aren't profit yet,
 they're capital being deployed. This requires WSL-to-Windows interop (powershell.exe) to be
 reachable; if it isn't, the popup silently logs a warning and the trading logic is unaffected.
+
+FAILURE POP-UP: fires when a cycle dies before it ever gets to placing orders — Webull
+connection/auth failure, or IBKR unreachable (the latter is the single most common real failure
+mode so far: TWS simply wasn't running on the Windows host when cron fired, e.g. the missed
+8:30am CT cycle on 2026-10-06). Unlike the trade pop-up there's no separate detail HTML; clicking
+the toast opens this script's own log file directly, since the traceback is already there. See
+webull_common.send_failure_popup.
 """
 from __future__ import annotations
 
@@ -73,7 +80,7 @@ from rotation_common import (
 )
 from webull_common import (
     build_trade_client, get_free_cash_and_positions, managed_nav, get_cost_basis,
-    compute_realized_pnl, send_trade_popup,
+    compute_realized_pnl, send_trade_popup, send_failure_popup,
     place_order as _place_order, confirm_live_authorized as _confirm_live_authorized,
 )
 
@@ -89,7 +96,7 @@ TRADE_LOG_TXT_PATH = HERE / 'webull_intraday_trade_log.txt'
 TRADE_LOG_CSV_PATH = HERE / 'webull_intraday_trade_log.csv'
 TRADE_LOG_CSV_COLUMNS = ['timestamp', 'side', 'ticker', 'success', 'account_balance']
 
-DRY_RUN = True  # <-- must be flipped to False here, AND --confirm-live, AND CONFIRM_LIVE=YES env var, to place real orders
+DRY_RUN = False  # flipped live 2026-10-05, after a single manually-supervised real test trade confirmed the order path works
 
 IB_HOST = '172.27.224.1'
 IB_PORT = 7497
@@ -146,8 +153,8 @@ def append_trade_log(timestamp: pd.Timestamp, side: str, ticker: str, status: st
                           f'{balance:.2f}' if balance is not None else ''])
 
 
-def place_order(trade_client, data_client, account_id, order_spec, instrument_cache, dry_run) -> None:
-    _place_order(trade_client, data_client, account_id, order_spec, instrument_cache, dry_run, log, append_trade_log)
+def place_order(trade_client, account_id, order_spec, dry_run) -> None:
+    _place_order(trade_client, account_id, order_spec, dry_run, log, append_trade_log)
 
 
 def confirm_live_authorized(cli_confirm_live: bool) -> bool:
@@ -184,9 +191,10 @@ def main() -> int:
     log.info('=== relative strength rotation Webull INTRADAY run: %s (dry_run=%s) ===', now.isoformat(), dry_run)
 
     try:
-        trade_client, data_client, account_id = build_trade_client(log)
-    except Exception:
+        trade_client, account_id = build_trade_client(log)
+    except Exception as exc:
         log.exception('could not set up Webull trade client')
+        send_failure_popup('Webull connection/auth', str(exc), LOG_PATH, log)
         return 1
     log.info('using Webull account_id=%s', account_id)
 
@@ -194,8 +202,9 @@ def main() -> int:
     ib = IB()
     try:
         ib.connect(IB_HOST, IB_PORT, clientId=IB_CLIENT_ID, readonly=True, timeout=20)
-    except Exception:
+    except Exception as exc:
         log.exception('could not connect to IBKR at %s:%d for ranking data', IB_HOST, IB_PORT)
+        send_failure_popup('IBKR connection', str(exc), LOG_PATH, log)
         return 1
 
     try:
@@ -239,9 +248,8 @@ def main() -> int:
         log.exception('could not read cost basis — trade popup will show $0.00 realized P&L this cycle')
         cost_basis = {}
 
-    instrument_cache: dict[str, str] = {}
     for order_spec in sells:
-        place_order(trade_client, data_client, account_id, order_spec, instrument_cache, dry_run)
+        place_order(trade_client, account_id, order_spec, dry_run)
     if sells and not dry_run:
         time.sleep(FILL_WAIT_SECONDS)
         free_cash, current_positions = get_free_cash_and_positions(trade_client, account_id)
@@ -250,7 +258,7 @@ def main() -> int:
                                 INVESTABLE_FRACTION, MAX_ORDER_FRACTION_OF_NAV, MIN_TRADE_NOTIONAL)
         buys = [o for o in orders if o['side'] == 'BUY']
     for order_spec in buys:
-        place_order(trade_client, data_client, account_id, order_spec, instrument_cache, dry_run)
+        place_order(trade_client, account_id, order_spec, dry_run)
 
     if sells or buys:
         net_profit = compute_realized_pnl(sells, cost_basis, log)
