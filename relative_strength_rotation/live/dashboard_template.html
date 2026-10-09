@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relative Rotation Strategy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0b0e11;
+    --bg-elevated: #14181d;
+    --bg-card: #171c22;
+    --border: #262c34;
+    --text: #e8ecf1;
+    --text-dim: #8b95a3;
+    --text-faint: #5a6473;
+    --green: #16c784;
+    --green-dim: #0f9d68;
+    --red: #ea3943;
+    --red-dim: #c42d37;
+    --accent: #3b82f6;
+    --accent-dim: #2563eb;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --mono: 'Roboto Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 60px;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 20px; }
+
+  header.hero {
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #11151a 0%, var(--bg) 100%);
+    padding: 28px 0 24px;
+  }
+  .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .hero-title { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+  .hero-desc { color: var(--text-dim); font-size: 14.5px; line-height: 1.55; max-width: 720px; margin: 0; }
+  .live-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(22,199,132,0.12); border: 1px solid rgba(22,199,132,0.35);
+    color: var(--green); font-size: 12.5px; font-weight: 600;
+    padding: 6px 12px; border-radius: 999px; white-space: nowrap;
+  }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px rgba(22,199,132,0.2); }
+  .generated-note { color: var(--text-faint); font-size: 12px; margin-top: 10px; }
+
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 24px 0; }
+  @media (max-width: 900px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .card-label { font-size: 12px; color: var(--text-dim); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+  .card-value { font-size: 24px; font-weight: 700; font-family: var(--mono); letter-spacing: -0.01em; }
+  .card-sub { font-size: 12.5px; color: var(--text-dim); margin-top: 6px; line-height: 1.5; }
+  .pos { color: var(--green); } .neg { color: var(--red); }
+
+  .layout { display: grid; grid-template-columns: 1fr 320px; gap: 18px; align-items: start; }
+  @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; }
+  .panel-title { font-size: 15px; font-weight: 700; margin: 0 0 2px; }
+  .panel-subtitle { font-size: 12.5px; color: var(--text-dim); margin: 0 0 14px; }
+
+  .chart-toggle { display: flex; gap: 6px; margin-bottom: 12px; }
+  .toggle-btn {
+    background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-dim);
+    font-family: var(--font); font-size: 12.5px; font-weight: 600; padding: 6px 13px;
+    border-radius: 7px; cursor: pointer; transition: all 0.15s;
+  }
+  .toggle-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .toggle-btn:hover:not(.active) { border-color: var(--text-faint); }
+
+  canvas { max-width: 100%; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--text-faint); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; padding: 8px 10px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg-card); }
+  td { padding: 8px 10px; border-bottom: 1px solid rgba(38,44,52,0.6); font-family: var(--mono); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .side-buy { color: var(--green); font-weight: 600; }
+  .side-sell { color: var(--red); font-weight: 600; }
+  .badge { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 5px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .badge-success { background: rgba(22,199,132,0.14); color: var(--green); }
+  .badge-failed { background: rgba(234,57,67,0.14); color: var(--red); }
+  .table-scroll { max-height: 420px; overflow-y: auto; border-radius: 8px; }
+
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-bottom: 1px solid rgba(38,44,52,0.6); }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { font-size: 13px; color: var(--text-dim); }
+  .stat-value { font-family: var(--mono); font-weight: 600; font-size: 14px; }
+  .stat-note { font-size: 11px; color: var(--text-faint); margin-top: -4px; padding-bottom: 8px; }
+
+  .holding-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(38,44,52,0.6); font-size: 13px; }
+  .holding-row:last-child { border-bottom: none; }
+  .holding-ticker { font-weight: 700; }
+  .holding-detail { color: var(--text-faint); font-size: 11px; }
+  .holding-value { font-family: var(--mono); text-align: right; }
+
+  .orphan-box {
+    background: rgba(234,57,67,0.06); border: 1px solid rgba(234,57,67,0.25); border-radius: 10px;
+    padding: 12px 14px; font-size: 12.5px; color: var(--text-dim); line-height: 1.6; margin-top: 10px;
+  }
+  .orphan-box b { color: var(--text); }
+
+  details.notes { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; }
+  details.notes summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+  details.notes[open] summary { margin-bottom: 12px; }
+  .notes-body { font-size: 13px; color: var(--text-dim); line-height: 1.7; }
+  .notes-body code { background: var(--bg-elevated); padding: 1px 6px; border-radius: 4px; font-family: var(--mono); font-size: 12px; color: var(--text); }
+  .notes-body ul { padding-left: 20px; }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-top">
+      <div>
+        <h1 class="hero-title" id="strategyName">Relative Rotation Strategy</h1>
+        <p class="hero-desc" id="strategyDesc"></p>
+      </div>
+      <span class="live-badge"><span class="live-dot"></span><span id="liveSince"></span></span>
+    </div>
+    <div class="generated-note" id="generatedNote"></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">Portfolio Value</div>
+      <div class="card-value" id="cardPortfolioValue">—</div>
+      <div class="card-sub" id="cardPortfolioSub"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Free Cash</div>
+      <div class="card-value" id="cardFreeCash">—</div>
+      <div class="card-sub" id="cardFreeCashSub"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Total P&amp;L (since inception)</div>
+      <div class="card-value" id="cardTotalPnl">—</div>
+      <div class="card-sub" id="cardTotalPnlSub"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Open Positions</div>
+      <div class="card-value" id="cardPositions">—</div>
+      <div class="card-sub" id="cardPositionsSub"></div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="panel">
+        <div class="panel-title">Portfolio value over time</div>
+        <div class="panel-subtitle">Every point is this strategy's own NAV computation, logged at the start of each rebalance cycle — hover for detail.</div>
+        <div class="chart-toggle">
+          <button class="toggle-btn active" data-mode="dollar">$ Value</button>
+          <button class="toggle-btn" data-mode="pct">% Since Inception</button>
+        </div>
+        <canvas id="navChart" height="110"></canvas>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Buy / sell log</div>
+        <div class="panel-subtitle">Every order this strategy has placed on real money, sized by estimated notional.</div>
+        <canvas id="tradesChart" height="90"></canvas>
+        <div class="table-scroll" style="margin-top:16px;">
+          <table>
+            <thead><tr><th>Date / Time (CT)</th><th>Side</th><th>Ticker</th><th>Status</th><th style="text-align:right">Notional</th></tr></thead>
+            <tbody id="tradeTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <div class="panel-title">Key stats</div>
+        <div class="panel-subtitle">Computed from the cycle-level NAV series (small sample — see note).</div>
+        <div id="statsBody"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Current holdings</div>
+        <div class="panel-subtitle" id="holdingsSubtitle"></div>
+        <div id="holdingsBody"></div>
+        <div class="orphan-box" id="orphanBox" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <details class="notes">
+    <summary>Data notes &amp; methodology</summary>
+    <div class="notes-body" id="notesBody"></div>
+  </details>
+</div>
+
+<script>
+const DASHBOARD_DATA = /*__DASHBOARD_DATA__*/;
+
+const fmt$ = (v, decimals=2) => v == null ? '—' : (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString('en-US', {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
+const fmtPct = (v, decimals=2) => v == null || isNaN(v) ? '—' : (v >= 0 ? '+' : '') + (v * 100).toFixed(decimals) + '%';
+const fmtDateTime = (iso) => new Date(iso).toLocaleString('en-US', {timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'});
+const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-US', {timeZone: 'America/Chicago', month: 'long', day: 'numeric', year: 'numeric'});
+
+Chart.defaults.color = '#8b95a3';
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.borderColor = '#262c34';
+
+function render() {
+  const d = DASHBOARD_DATA;
+
+  document.getElementById('strategyName').textContent = d.strategy_name;
+  document.getElementById('strategyDesc').textContent = d.strategy_description;
+  document.getElementById('liveSince').textContent = 'Live since ' + fmtDate(d.inception_timestamp);
+  document.getElementById('generatedNote').textContent = 'Snapshot generated ' + new Date(d.generated_at).toLocaleString('en-US', {timeZone: 'America/Chicago', dateStyle: 'medium', timeStyle: 'short'}) + ' CT';
+
+  // --- top cards ---
+  document.getElementById('cardPortfolioValue').textContent = fmt$(d.current.true_total_value);
+  document.getElementById('cardPortfolioSub').innerHTML = `Settled $${d.current.settled_cash.toFixed(2)} + pending settlement $${d.current.unsettled_cash.toFixed(2)} + positions $${d.current.managed_positions_market_value.toFixed(2)}`;
+
+  document.getElementById('cardFreeCash').textContent = fmt$(d.current.settled_cash);
+  document.getElementById('cardFreeCashSub').innerHTML = d.current.unsettled_cash > 0.01
+    ? `+ ${fmt$(d.current.unsettled_cash)} pending settlement (~1-2 business days)`
+    : 'fully settled';
+
+  const pnlEl = document.getElementById('cardTotalPnl');
+  pnlEl.textContent = fmt$(d.total_pnl_dollars);
+  pnlEl.className = 'card-value ' + (d.total_pnl_dollars >= 0 ? 'pos' : 'neg');
+  document.getElementById('cardTotalPnlSub').innerHTML = `${fmtPct(d.total_pnl_pct)} &nbsp;·&nbsp; from ${fmt$(d.inception_nav)} on ${fmtDate(d.inception_timestamp)}`;
+
+  document.getElementById('cardPositions').textContent = d.current.managed_positions.length;
+  document.getElementById('cardPositionsSub').textContent = `in the managed halal universe right now`;
+
+  // --- NAV chart ---
+  const navLabels = d.nav_history.map(p => fmtDateTime(p.timestamp));
+  const navDollar = d.nav_history.map(p => p.nav);
+  const navPct = d.nav_history.map(p => (p.nav / d.inception_nav - 1) * 100);
+
+  let navMode = 'dollar';
+  const ctx = document.getElementById('navChart').getContext('2d');
+  const navChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: navLabels,
+      datasets: [{
+        label: 'NAV',
+        data: navDollar,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59,130,246,0.08)',
+        borderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointBackgroundColor: '#3b82f6',
+        tension: 0.15,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#14181d', borderColor: '#262c34', borderWidth: 1,
+          titleColor: '#e8ecf1', bodyColor: '#e8ecf1', padding: 10,
+          callbacks: {
+            label: (ctx) => navMode === 'pct'
+              ? 'Return since inception: ' + ctx.parsed.y.toFixed(2) + '%'
+              : 'NAV: $' + ctx.parsed.y.toFixed(2)
+          }
+        }
+      },
+      scales: {
+        y: { grid: { color: '#1b2026' }, ticks: { callback: v => navMode === 'pct' ? v + '%' : '$' + v } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  document.querySelectorAll('.chart-toggle .toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.chart-toggle .toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      navMode = btn.dataset.mode;
+      navChart.data.datasets[0].data = navMode === 'pct' ? navPct : navDollar;
+      navChart.options.scales.y.ticks.callback = v => navMode === 'pct' ? v.toFixed(0) + '%' : '$' + v;
+      navChart.update();
+    });
+  });
+
+  // --- trades chart (notional by side over time, plotted against a shared category axis so no
+  // date-adapter dependency is needed — index position is the only thing that needs to line up) ---
+  const realTrades = d.trades.filter(t => t.status !== 'DRY_RUN').slice().reverse();
+  const tradeLabels = realTrades.map(t => fmtDateTime(t.timestamp));
+  const buyPoints = realTrades
+    .map((t, x) => ({t, x}))
+    .filter(({t}) => t.side === 'BUY' && t.notional != null)
+    .map(({t, x}) => ({x, y: t.notional}));
+  const sellPoints = realTrades
+    .map((t, x) => ({t, x}))
+    .filter(({t}) => t.side === 'SELL' && t.notional != null)
+    .map(({t, x}) => ({x, y: t.notional}));
+
+  new Chart(document.getElementById('tradesChart').getContext('2d'), {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { label: 'Buy', data: buyPoints, backgroundColor: '#16c784', pointRadius: 5, pointHoverRadius: 7 },
+        { label: 'Sell', data: sellPoints, backgroundColor: '#ea3943', pointRadius: 5, pointHoverRadius: 7 },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 10, padding: 14, font: { size: 11.5 } } },
+        tooltip: {
+          backgroundColor: '#14181d', borderColor: '#262c34', borderWidth: 1,
+          titleColor: '#e8ecf1', bodyColor: '#e8ecf1', padding: 10,
+          callbacks: { label: (ctx) => `$${ctx.raw.y.toFixed(2)} — ${tradeLabels[ctx.raw.x] || ''}` }
+        }
+      },
+      scales: {
+        x: {
+          type: 'linear', min: -1, max: tradeLabels.length,
+          grid: { color: '#1b2026' },
+          ticks: {
+            maxRotation: 0, autoSkip: true, maxTicksLimit: 8,
+            callback: (v) => tradeLabels[v] !== undefined ? tradeLabels[v] : ''
+          }
+        },
+        y: { grid: { color: '#1b2026' }, ticks: { callback: v => '$' + v }, title: { display: true, text: 'Notional ($)', color: '#5a6473', font: { size: 11 } } }
+      }
+    }
+  });
+
+  // --- trade table ---
+  const tbody = document.getElementById('tradeTableBody');
+  tbody.innerHTML = d.trades.map(t => `
+    <tr>
+      <td>${fmtDateTime(t.timestamp)}</td>
+      <td class="side-${t.side.toLowerCase()}">${t.side}</td>
+      <td>${t.ticker}</td>
+      <td><span class="badge badge-${t.status === 'SUCCESS' ? 'success' : 'failed'}">${t.status}</span></td>
+      <td style="text-align:right">${t.notional != null ? '$' + t.notional.toFixed(2) : '—'}</td>
+    </tr>
+  `).join('');
+
+  // --- stats panel ---
+  const s = d.stats;
+  document.getElementById('statsBody').innerHTML = `
+    <div class="stat-row"><span class="stat-label">Max drawdown</span><span class="stat-value neg">${fmtPct(s.max_drawdown_pct)}</span></div>
+    <div class="stat-note">at ${fmtDateTime(s.max_drawdown_at)}</div>
+    <div class="stat-row"><span class="stat-label">Mean cycle return</span><span class="stat-value ${s.mean_cycle_return_pct >= 0 ? 'pos' : 'neg'}">${fmtPct(s.mean_cycle_return_pct)}</span></div>
+    <div class="stat-row"><span class="stat-label">Cycle return std. dev.</span><span class="stat-value">${(s.std_cycle_return_pct * 100).toFixed(2)}%</span></div>
+    <div class="stat-row"><span class="stat-label">Naive Sharpe (per cycle)</span><span class="stat-value">${s.naive_sharpe_per_cycle.toFixed(2)}</span></div>
+    <div class="stat-note">⚠ based on only ${s.n_observations} cycle observations over a few days — not annualized, not statistically meaningful yet. Treat as directional only.</div>
+    <div class="stat-row"><span class="stat-label">Trades placed</span><span class="stat-value">${d.trade_summary.total}</span></div>
+    <div class="stat-row"><span class="stat-label">Successful buys</span><span class="stat-value pos">${d.trade_summary.buys}</span></div>
+    <div class="stat-row"><span class="stat-label">Successful sells</span><span class="stat-value">${d.trade_summary.sells}</span></div>
+    <div class="stat-row"><span class="stat-label">Failed orders</span><span class="stat-value neg">${d.trade_summary.failed}</span></div>
+  `;
+
+  // --- holdings ---
+  document.getElementById('holdingsSubtitle').textContent = `${d.current.managed_positions.length} positions, $${d.current.managed_positions_market_value.toFixed(2)} total`;
+  const sortedHoldings = d.current.managed_positions.slice().sort((a, b) => b.market_value - a.market_value);
+  document.getElementById('holdingsBody').innerHTML = sortedHoldings.map(p => `
+    <div class="holding-row">
+      <div>
+        <div class="holding-ticker">${p.ticker}</div>
+        <div class="holding-detail">${p.shares.toFixed(5)} sh @ $${p.cost_price.toFixed(2)}</div>
+      </div>
+      <div class="holding-value">
+        <div>$${p.market_value.toFixed(2)}</div>
+        <div class="${p.unrealized_pl >= 0 ? 'pos' : 'neg'}" style="font-size:11px">${p.unrealized_pl >= 0 ? '+' : ''}$${p.unrealized_pl.toFixed(2)}</div>
+      </div>
+    </div>
+  `).join('');
+
+  if (d.current.orphaned_positions && d.current.orphaned_positions.length) {
+    const box = document.getElementById('orphanBox');
+    box.style.display = 'block';
+    box.innerHTML = d.current.orphaned_positions.map(p => `
+      <b>${p.ticker}</b> — ${p.shares.toFixed(5)} sh, worth $${p.market_value.toFixed(2)} (${p.unrealized_pl >= 0 ? '+' : ''}$${p.unrealized_pl.toFixed(2)}).
+      Bought by this strategy, then removed from the halal universe — it's now orphaned: the
+      strategy will never automatically sell it again. Excluded from every number above. Sell it
+      manually in Webull if you want it gone.
+    `).join('<br><br>');
+  }
+
+  // --- data notes ---
+  const droppedHtml = d.nav_dropped.length ? d.nav_dropped.map(p => `<li><code>${fmtDateTime(p.timestamp)}</code> — ${p.reason}</li>`).join('') : '<li>none</li>';
+  document.getElementById('notesBody').innerHTML = `
+    <ul>
+      <li><b>Only this strategy's own money is shown.</b> Everything above excludes every other
+      holding in the account that existed before this strategy started, or that it never bought —
+      those were never this strategy's capital.</li>
+      <li><b>The NAV chart</b> plots this strategy's own computed NAV (settled cash + managed
+      position value) at the start of each rebalance cycle, exactly as the live script logs it —
+      the same method at every point, so it's internally consistent.</li>
+      <li><b>One reading was dropped</b> as a confirmed bad data point (not a real NAV):
+        <ul>${droppedHtml}</ul>
+      </li>
+      <li><b>"Portfolio Value" at the top</b> includes cash pending settlement (from a recent
+      sell, typically clears in 1-2 business days), which the chart's own NAV method deliberately
+      excludes (by design, to make good-faith violations structurally impossible). That's why the
+      portfolio value card and the chart's most recent point can differ — both are real, they're
+      just measuring slightly different things.</li>
+      <li><b>Trade notional</b> is matched from each order's preview-order response at execution
+      time, not a separate estimate.</li>
+      <li>Generate a fresh snapshot any time with <code>python3 build_dashboard.py</code> from
+      <code>relative_strength_rotation/live/</code>.</li>
+    </ul>
+  `;
+}
+
+render();
+</script>
+</body>
+</html>

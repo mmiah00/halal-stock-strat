@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relative Rotation Strategy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0b0e11;
+    --bg-elevated: #14181d;
+    --bg-card: #171c22;
+    --border: #262c34;
+    --text: #e8ecf1;
+    --text-dim: #8b95a3;
+    --text-faint: #5a6473;
+    --green: #16c784;
+    --green-dim: #0f9d68;
+    --red: #ea3943;
+    --red-dim: #c42d37;
+    --accent: #3b82f6;
+    --accent-dim: #2563eb;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --mono: 'Roboto Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 60px;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 20px; }
+
+  header.hero {
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #11151a 0%, var(--bg) 100%);
+    padding: 28px 0 24px;
+  }
+  .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .hero-title { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+  .hero-desc { color: var(--text-dim); font-size: 14.5px; line-height: 1.55; max-width: 720px; margin: 0; }
+  .live-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(22,199,132,0.12); border: 1px solid rgba(22,199,132,0.35);
+    color: var(--green); font-size: 12.5px; font-weight: 600;
+    padding: 6px 12px; border-radius: 999px; white-space: nowrap;
+  }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px rgba(22,199,132,0.2); }
+  .generated-note { color: var(--text-faint); font-size: 12px; margin-top: 10px; }
+
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 24px 0; }
+  @media (max-width: 900px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .card-label { font-size: 12px; color: var(--text-dim); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+  .card-value { font-size: 24px; font-weight: 700; font-family: var(--mono); letter-spacing: -0.01em; }
+  .card-sub { font-size: 12.5px; color: var(--text-dim); margin-top: 6px; line-height: 1.5; }
+  .pos { color: var(--green); } .neg { color: var(--red); }
+
+  .layout { display: grid; grid-template-columns: 1fr 320px; gap: 18px; align-items: start; }
+  @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; }
+  .panel-title { font-size: 15px; font-weight: 700; margin: 0 0 2px; }
+  .panel-subtitle { font-size: 12.5px; color: var(--text-dim); margin: 0 0 14px; }
+
+  .chart-toggle { display: flex; gap: 6px; margin-bottom: 12px; }
+  .toggle-btn {
+    background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-dim);
+    font-family: var(--font); font-size: 12.5px; font-weight: 600; padding: 6px 13px;
+    border-radius: 7px; cursor: pointer; transition: all 0.15s;
+  }
+  .toggle-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .toggle-btn:hover:not(.active) { border-color: var(--text-faint); }
+
+  canvas { max-width: 100%; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--text-faint); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; padding: 8px 10px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg-card); }
+  td { padding: 8px 10px; border-bottom: 1px solid rgba(38,44,52,0.6); font-family: var(--mono); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .side-buy { color: var(--green); font-weight: 600; }
+  .side-sell { color: var(--red); font-weight: 600; }
+  .badge { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 5px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .badge-success { background: rgba(22,199,132,0.14); color: var(--green); }
+  .badge-failed { background: rgba(234,57,67,0.14); color: var(--red); }
+  .table-scroll { max-height: 420px; overflow-y: auto; border-radius: 8px; }
+
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-bottom: 1px solid rgba(38,44,52,0.6); }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { font-size: 13px; color: var(--text-dim); }
+  .stat-value { font-family: var(--mono); font-weight: 600; font-size: 14px; }
+  .stat-note { font-size: 11px; color: var(--text-faint); margin-top: -4px; padding-bottom: 8px; }
+
+  .holding-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(38,44,52,0.6); font-size: 13px; }
+  .holding-row:last-child { border-bottom: none; }
+  .holding-ticker { font-weight: 700; }
+  .holding-detail { color: var(--text-faint); font-size: 11px; }
+  .holding-value { font-family: var(--mono); text-align: right; }
+
+  .orphan-box {
+    background: rgba(234,57,67,0.06); border: 1px solid rgba(234,57,67,0.25); border-radius: 10px;
+    padding: 12px 14px; font-size: 12.5px; color: var(--text-dim); line-height: 1.6; margin-top: 10px;
+  }
+  .orphan-box b { color: var(--text); }
+
+  details.notes { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; }
+  details.notes summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+  details.notes[open] summary { margin-bottom: 12px; }
+  .notes-body { font-size: 13px; color: var(--text-dim); line-height: 1.7; }
+  .notes-body code { background: var(--bg-elevated); padding: 1px 6px; border-radius: 4px; font-family: var(--mono); font-size: 12px; color: var(--text); }
+  .notes-body ul { padding-left: 20px; }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-top">
+      <div>
+        <h1 class="hero-title" id="strategyName">Relative Rotation Strategy</h1>
+        <p class="hero-desc" id="strategyDesc"></p>
+      </div>
+      <span class="live-badge"><span class="live-dot"></span><span id="liveSince"></span></span>
+    </div>
+    <div class="generated-note" id="generatedNote"></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">Portfolio Value</div>
+      <div class="card-value" id="cardPortfolioValue">—</div>
+      <div class="card-sub" id="cardPortfolioSub"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Free Cash</div>
+      <div class="card-value" id="cardFreeCash">—</div>
+      <div class="card-sub" id="cardFreeCashSub"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Total P&amp;L (since inception)</div>
+      <div class="card-value" id="cardTotalPnl">—</div>
+      <div class="card-sub" id="cardTotalPnlSub"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Open Positions</div>
+      <div class="card-value" id="cardPositions">—</div>
+      <div class="card-sub" id="cardPositionsSub"></div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="panel">
+        <div class="panel-title">Portfolio value over time</div>
+        <div class="panel-subtitle">Every point is this strategy's own NAV computation, logged at the start of each rebalance cycle — hover for detail.</div>
+        <div class="chart-toggle">
+          <button class="toggle-btn active" data-mode="dollar">$ Value</button>
+          <button class="toggle-btn" data-mode="pct">% Since Inception</button>
+        </div>
+        <canvas id="navChart" height="110"></canvas>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Buy / sell log</div>
+        <div class="panel-subtitle">Every order this strategy has placed on real money, sized by estimated notional.</div>
+        <canvas id="tradesChart" height="90"></canvas>
+        <div class="table-scroll" style="margin-top:16px;">
+          <table>
+            <thead><tr><th>Date / Time (CT)</th><th>Side</th><th>Ticker</th><th>Status</th><th style="text-align:right">Notional</th></tr></thead>
+            <tbody id="tradeTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <div class="panel-title">Key stats</div>
+        <div class="panel-subtitle">Computed from the cycle-level NAV series (small sample — see note).</div>
+        <div id="statsBody"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Current holdings</div>
+        <div class="panel-subtitle" id="holdingsSubtitle"></div>
+        <div id="holdingsBody"></div>
+        <div class="orphan-box" id="orphanBox" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <details class="notes">
+    <summary>Data notes &amp; methodology</summary>
+    <div class="notes-body" id="notesBody"></div>
+  </details>
+</div>
+
+<script>
+const DASHBOARD_DATA = {
+  "strategy_name": "Relative Rotation Strategy",
+  "strategy_description": "Ranks a halal-screened universe of stocks by trailing price return and holds the top 10, equal-weighted, rebalancing every 2 hours during market hours. Names that fall out of the top ranks are sold and replaced by whatever is currently strongest \u2014 the same mechanic as classic relative-strength rotation, just run on hourly bars instead of monthly ones.",
+  "inception_date": "2026-10-05",
+  "inception_timestamp": "2026-10-05T16:28:12+00:00",
+  "inception_nav": 164.67,
+  "generated_at": "2026-10-09T17:59:28.708093+00:00",
+  "nav_history": [
+    {
+      "timestamp": "2026-10-05T16:28:12+00:00",
+      "nav": 164.67
+    },
+    {
+      "timestamp": "2026-10-05T17:34:48+00:00",
+      "nav": 159.85
+    },
+    {
+      "timestamp": "2026-10-06T14:33:39+00:00",
+      "nav": 164.24
+    },
+    {
+      "timestamp": "2026-10-07T14:40:24+00:00",
+      "nav": 162.42
+    },
+    {
+      "timestamp": "2026-10-08T17:29:48+00:00",
+      "nav": 153.25
+    },
+    {
+      "timestamp": "2026-10-08T17:34:51+00:00",
+      "nav": 127.48
+    },
+    {
+      "timestamp": "2026-10-09T17:05:28+00:00",
+      "nav": 152.77
+    }
+  ],
+  "nav_dropped": [
+    {
+      "timestamp": "2026-10-07T17:35:00+00:00",
+      "reason": "free cash read as -$16.90 (impossible for this cash account) \u2014 stale 429-rate-limited balance read"
+    }
+  ],
+  "current": {
+    "settled_cash": 9.2,
+    "unsettled_cash": 74.7,
+    "managed_positions": [
+      {
+        "ticker": "PDD",
+        "shares": 0.09399,
+        "cost_price": 81.09,
+        "last_price": 81.44,
+        "market_value": 7.65,
+        "unrealized_pl": 0.03
+      },
+      {
+        "ticker": "PANW",
+        "shares": 0.01844,
+        "cost_price": 415.6,
+        "last_price": 417.2,
+        "market_value": 7.69,
+        "unrealized_pl": 0.03
+      },
+      {
+        "ticker": "ORCL",
+        "shares": 0.05394,
+        "cost_price": 141.58,
+        "last_price": 142.82,
+        "market_value": 7.7,
+        "unrealized_pl": 0.07
+      },
+      {
+        "ticker": "GILD",
+        "shares": 0.05062,
+        "cost_price": 151.22,
+        "last_price": 151.33,
+        "market_value": 7.66,
+        "unrealized_pl": 0.01
+      },
+      {
+        "ticker": "FCX",
+        "shares": 0.10417,
+        "cost_price": 73.67,
+        "last_price": 73.83,
+        "market_value": 7.69,
+        "unrealized_pl": 0.02
+      },
+      {
+        "ticker": "DDOG",
+        "shares": 0.02636,
+        "cost_price": 291.0,
+        "last_price": 291.46,
+        "market_value": 7.68,
+        "unrealized_pl": 0.01
+      },
+      {
+        "ticker": "CRWD",
+        "shares": 0.0281,
+        "cost_price": 272.31,
+        "last_price": 273.14,
+        "market_value": 7.68,
+        "unrealized_pl": 0.02
+      },
+      {
+        "ticker": "BABA",
+        "shares": 0.06898,
+        "cost_price": 110.83,
+        "last_price": 110.98,
+        "market_value": 7.66,
+        "unrealized_pl": 0.01
+      },
+      {
+        "ticker": "AMZN",
+        "shares": 0.02924,
+        "cost_price": 260.69,
+        "last_price": 261.0,
+        "market_value": 7.63,
+        "unrealized_pl": 0.01
+      }
+    ],
+    "orphaned_positions": [
+      {
+        "ticker": "PLTR",
+        "shares": 0.04629,
+        "cost_price": 191.94,
+        "last_price": 205.84,
+        "market_value": 9.53,
+        "unrealized_pl": 0.64
+      }
+    ],
+    "unmanaged_count": 8,
+    "generated_at": "2026-10-09T17:59:28.708093+00:00",
+    "managed_positions_market_value": 69.04,
+    "true_total_value": 152.94,
+    "consistent_method_value": 78.24000000000001
+  },
+  "total_pnl_dollars": -11.72999999999999,
+  "total_pnl_pct": -0.07123337584259422,
+  "stats": {
+    "n_observations": 7,
+    "max_drawdown_pct": -0.22584563065524982,
+    "max_drawdown_at": "2026-10-08T17:34:51+00:00",
+    "mean_cycle_return_pct": -0.006519978490074629,
+    "std_cycle_return_pct": 0.12024906348597764,
+    "naive_sharpe_per_cycle": -0.05422061761699234
+  },
+  "trades": [
+    {
+      "timestamp": "2026-10-09T17:05:57.374710+00:00",
+      "side": "BUY",
+      "ticker": "PDD",
+      "status": "SUCCESS",
+      "notional": 7.6865022
+    },
+    {
+      "timestamp": "2026-10-09T17:05:56.967518+00:00",
+      "side": "BUY",
+      "ticker": "PANW",
+      "status": "SUCCESS",
+      "notional": 7.6878204
+    },
+    {
+      "timestamp": "2026-10-09T17:05:56.567817+00:00",
+      "side": "BUY",
+      "ticker": "ORCL",
+      "status": "SUCCESS",
+      "notional": 7.6869894
+    },
+    {
+      "timestamp": "2026-10-09T17:05:55.891824+00:00",
+      "side": "BUY",
+      "ticker": "GRAB",
+      "status": "FAILED",
+      "notional": 7.6955719
+    },
+    {
+      "timestamp": "2026-10-09T17:05:55.491355+00:00",
+      "side": "BUY",
+      "ticker": "GILD",
+      "status": "SUCCESS",
+      "notional": 7.6861408
+    },
+    {
+      "timestamp": "2026-10-09T17:05:54.839871+00:00",
+      "side": "BUY",
+      "ticker": "FCX",
+      "status": "SUCCESS",
+      "notional": 7.6867043
+    },
+    {
+      "timestamp": "2026-10-09T17:05:54.444223+00:00",
+      "side": "BUY",
+      "ticker": "DDOG",
+      "status": "SUCCESS",
+      "notional": 7.6876304
+    },
+    {
+      "timestamp": "2026-10-09T17:05:54.055238+00:00",
+      "side": "BUY",
+      "ticker": "CRWD",
+      "status": "SUCCESS",
+      "notional": 7.685912
+    },
+    {
+      "timestamp": "2026-10-09T17:05:53.653266+00:00",
+      "side": "BUY",
+      "ticker": "BABA",
+      "status": "SUCCESS",
+      "notional": 7.6857516
+    },
+    {
+      "timestamp": "2026-10-09T17:05:52.243055+00:00",
+      "side": "BUY",
+      "ticker": "AMZN",
+      "status": "SUCCESS",
+      "notional": 7.6854416
+    },
+    {
+      "timestamp": "2026-10-09T17:05:31.464304+00:00",
+      "side": "SELL",
+      "ticker": "TGT",
+      "status": "SUCCESS",
+      "notional": 12.3650977
+    },
+    {
+      "timestamp": "2026-10-09T17:05:30.808801+00:00",
+      "side": "SELL",
+      "ticker": "MDT",
+      "status": "SUCCESS",
+      "notional": 12.4205615
+    },
+    {
+      "timestamp": "2026-10-09T17:05:30.389404+00:00",
+      "side": "SELL",
+      "ticker": "FANG",
+      "status": "SUCCESS",
+      "notional": 12.5726939
+    },
+    {
+      "timestamp": "2026-10-09T17:05:29.992562+00:00",
+      "side": "SELL",
+      "ticker": "CVX",
+      "status": "SUCCESS",
+      "notional": 12.5610944
+    },
+    {
+      "timestamp": "2026-10-09T17:05:29.511668+00:00",
+      "side": "SELL",
+      "ticker": "COP",
+      "status": "SUCCESS",
+      "notional": 12.513006
+    },
+    {
+      "timestamp": "2026-10-09T17:05:28.903518+00:00",
+      "side": "SELL",
+      "ticker": "CMG",
+      "status": "SUCCESS",
+      "notional": 11.861464
+    },
+    {
+      "timestamp": "2026-10-08T17:34:53.001176+00:00",
+      "side": "BUY",
+      "ticker": "VLO",
+      "status": "FAILED",
+      "notional": 12.5567994
+    },
+    {
+      "timestamp": "2026-10-08T17:34:52.667660+00:00",
+      "side": "BUY",
+      "ticker": "PSX",
+      "status": "FAILED",
+      "notional": 12.5560752
+    },
+    {
+      "timestamp": "2026-10-08T17:34:52.345385+00:00",
+      "side": "BUY",
+      "ticker": "MPC",
+      "status": "FAILED",
+      "notional": 12.5580048
+    },
+    {
+      "timestamp": "2026-10-08T17:34:51.864714+00:00",
+      "side": "BUY",
+      "ticker": "LOW",
+      "status": "FAILED",
+      "notional": 12.5543304
+    },
+    {
+      "timestamp": "2026-10-08T17:30:17.786561+00:00",
+      "side": "BUY",
+      "ticker": "VLO",
+      "status": "FAILED",
+      "notional": 12.5701152
+    },
+    {
+      "timestamp": "2026-10-08T17:30:17.260955+00:00",
+      "side": "BUY",
+      "ticker": "TGT",
+      "status": "SUCCESS",
+      "notional": 12.5710053
+    },
+    {
+      "timestamp": "2026-10-08T17:30:16.931569+00:00",
+      "side": "BUY",
+      "ticker": "PSX",
+      "status": "FAILED",
+      "notional": 12.5729064
+    },
+    {
+      "timestamp": "2026-10-08T17:30:16.192813+00:00",
+      "side": "BUY",
+      "ticker": "MPC",
+      "status": "FAILED",
+      "notional": 12.5719272
+    },
+    {
+      "timestamp": "2026-10-08T17:30:15.898055+00:00",
+      "side": "BUY",
+      "ticker": "MDT",
+      "status": "SUCCESS",
+      "notional": 12.571092
+    },
+    {
+      "timestamp": "2026-10-08T17:30:15.598046+00:00",
+      "side": "BUY",
+      "ticker": "LOW",
+      "status": "FAILED",
+      "notional": 12.5712045
+    },
+    {
+      "timestamp": "2026-10-08T17:30:15.293959+00:00",
+      "side": "BUY",
+      "ticker": "FANG",
+      "status": "SUCCESS",
+      "notional": 12.5715198
+    },
+    {
+      "timestamp": "2026-10-08T17:30:15.031644+00:00",
+      "side": "BUY",
+      "ticker": "CVX",
+      "status": "SUCCESS",
+      "notional": 12.569908
+    },
+    {
+      "timestamp": "2026-10-08T17:30:14.733922+00:00",
+      "side": "BUY",
+      "ticker": "COP",
+      "status": "SUCCESS",
+      "notional": 12.5707216
+    },
+    {
+      "timestamp": "2026-10-08T17:30:14.233108+00:00",
+      "side": "BUY",
+      "ticker": "CMG",
+      "status": "SUCCESS",
+      "notional": 12.5693392
+    },
+    {
+      "timestamp": "2026-10-08T17:29:51.962667+00:00",
+      "side": "SELL",
+      "ticker": "PFE",
+      "status": "SUCCESS",
+      "notional": 4.2712434
+    },
+    {
+      "timestamp": "2026-10-08T17:29:51.391736+00:00",
+      "side": "SELL",
+      "ticker": "LLY",
+      "status": "SUCCESS",
+      "notional": 4.1852384
+    },
+    {
+      "timestamp": "2026-10-08T17:29:50.551229+00:00",
+      "side": "SELL",
+      "ticker": "ISRG",
+      "status": "SUCCESS",
+      "notional": 4.298824
+    },
+    {
+      "timestamp": "2026-10-08T17:29:49.699384+00:00",
+      "side": "SELL",
+      "ticker": "GILD",
+      "status": "SUCCESS",
+      "notional": 4.232468
+    },
+    {
+      "timestamp": "2026-10-08T17:29:49.141497+00:00",
+      "side": "SELL",
+      "ticker": "AMGN",
+      "status": "SUCCESS",
+      "notional": 4.1934986
+    },
+    {
+      "timestamp": "2026-10-08T17:29:48.674014+00:00",
+      "side": "SELL",
+      "ticker": "ABBV",
+      "status": "SUCCESS",
+      "notional": 4.2426728
+    },
+    {
+      "timestamp": "2026-10-07T17:35:02.430203+00:00",
+      "side": "SELL",
+      "ticker": "VLO",
+      "status": "SUCCESS",
+      "notional": 4.2530588
+    },
+    {
+      "timestamp": "2026-10-07T17:35:02.010368+00:00",
+      "side": "SELL",
+      "ticker": "NVS",
+      "status": "SUCCESS",
+      "notional": 4.3061027
+    },
+    {
+      "timestamp": "2026-10-07T17:35:01.618435+00:00",
+      "side": "SELL",
+      "ticker": "MPC",
+      "status": "SUCCESS",
+      "notional": 4.2627425
+    },
+    {
+      "timestamp": "2026-10-07T17:35:01.166741+00:00",
+      "side": "SELL",
+      "ticker": "JNJ",
+      "status": "SUCCESS",
+      "notional": 4.3188875
+    },
+    {
+      "timestamp": "2026-10-07T17:35:00.542152+00:00",
+      "side": "SELL",
+      "ticker": "FTNT",
+      "status": "SUCCESS",
+      "notional": 8.9098308
+    },
+    {
+      "timestamp": "2026-10-07T14:40:58.273919+00:00",
+      "side": "BUY",
+      "ticker": "VLO",
+      "status": "SUCCESS",
+      "notional": 4.3456998
+    },
+    {
+      "timestamp": "2026-10-07T14:40:57.833994+00:00",
+      "side": "BUY",
+      "ticker": "PFE",
+      "status": "SUCCESS",
+      "notional": 4.3479923
+    },
+    {
+      "timestamp": "2026-10-07T14:40:57.080928+00:00",
+      "side": "BUY",
+      "ticker": "NVS",
+      "status": "SUCCESS",
+      "notional": 4.3475211
+    },
+    {
+      "timestamp": "2026-10-07T14:40:56.611755+00:00",
+      "side": "BUY",
+      "ticker": "MPC",
+      "status": "SUCCESS",
+      "notional": 4.3485975
+    },
+    {
+      "timestamp": "2026-10-07T14:40:56.151791+00:00",
+      "side": "BUY",
+      "ticker": "LLY",
+      "status": "SUCCESS",
+      "notional": 4.3472382
+    },
+    {
+      "timestamp": "2026-10-07T14:40:55.214814+00:00",
+      "side": "BUY",
+      "ticker": "JNJ",
+      "status": "SUCCESS",
+      "notional": 4.348127
+    },
+    {
+      "timestamp": "2026-10-07T14:40:54.769935+00:00",
+      "side": "BUY",
+      "ticker": "ISRG",
+      "status": "SUCCESS",
+      "notional": 4.346576
+    },
+    {
+      "timestamp": "2026-10-07T14:40:54.281007+00:00",
+      "side": "BUY",
+      "ticker": "GILD",
+      "status": "SUCCESS",
+      "notional": 4.347296
+    },
+    {
+      "timestamp": "2026-10-07T14:40:53.821165+00:00",
+      "side": "BUY",
+      "ticker": "AMGN",
+      "status": "SUCCESS",
+      "notional": 4.3471197
+    },
+    {
+      "timestamp": "2026-10-07T14:40:53.138279+00:00",
+      "side": "BUY",
+      "ticker": "ABBV",
+      "status": "SUCCESS",
+      "notional": 4.347297
+    },
+    {
+      "timestamp": "2026-10-07T14:40:30.747796+00:00",
+      "side": "SELL",
+      "ticker": "ZBH",
+      "status": "SUCCESS",
+      "notional": 15.2119947
+    },
+    {
+      "timestamp": "2026-10-07T14:40:30.358254+00:00",
+      "side": "SELL",
+      "ticker": "SAP",
+      "status": "SUCCESS",
+      "notional": 8.7270976
+    },
+    {
+      "timestamp": "2026-10-07T14:40:30.002652+00:00",
+      "side": "SELL",
+      "ticker": "PLTR",
+      "status": "FAILED",
+      "notional": 8.8304642
+    },
+    {
+      "timestamp": "2026-10-07T14:40:29.592418+00:00",
+      "side": "SELL",
+      "ticker": "PANW",
+      "status": "SUCCESS",
+      "notional": 8.4692681
+    },
+    {
+      "timestamp": "2026-10-07T14:40:29.205723+00:00",
+      "side": "SELL",
+      "ticker": "NOW",
+      "status": "SUCCESS",
+      "notional": 8.7903797
+    },
+    {
+      "timestamp": "2026-10-07T14:40:28.563814+00:00",
+      "side": "SELL",
+      "ticker": "MRVL",
+      "status": "SUCCESS",
+      "notional": 8.6456246
+    },
+    {
+      "timestamp": "2026-10-07T14:40:28.174738+00:00",
+      "side": "SELL",
+      "ticker": "GLW",
+      "status": "SUCCESS",
+      "notional": 8.9051089
+    },
+    {
+      "timestamp": "2026-10-07T14:40:27.799201+00:00",
+      "side": "SELL",
+      "ticker": "FTNT",
+      "status": "FAILED",
+      "notional": 8.894746
+    },
+    {
+      "timestamp": "2026-10-07T14:40:27.369831+00:00",
+      "side": "SELL",
+      "ticker": "FICO",
+      "status": "SUCCESS",
+      "notional": 10.775778
+    },
+    {
+      "timestamp": "2026-10-07T14:40:26.722799+00:00",
+      "side": "SELL",
+      "ticker": "CRWD",
+      "status": "SUCCESS",
+      "notional": 8.4358349
+    },
+    {
+      "timestamp": "2026-10-07T14:40:26.305286+00:00",
+      "side": "SELL",
+      "ticker": "AZO",
+      "status": "SUCCESS",
+      "notional": 8.8232552
+    },
+    {
+      "timestamp": "2026-10-07T14:40:25.821496+00:00",
+      "side": "SELL",
+      "ticker": "APP",
+      "status": "SUCCESS",
+      "notional": 14.845776
+    },
+    {
+      "timestamp": "2026-10-07T14:40:25.166509+00:00",
+      "side": "SELL",
+      "ticker": "ADSK",
+      "status": "SUCCESS",
+      "notional": 15.9459791
+    },
+    {
+      "timestamp": "2026-10-06T14:34:08.463177+00:00",
+      "side": "BUY",
+      "ticker": "SAP",
+      "status": "SUCCESS",
+      "notional": 9.0134975
+    },
+    {
+      "timestamp": "2026-10-06T14:34:07.820744+00:00",
+      "side": "BUY",
+      "ticker": "PLTR",
+      "status": "SUCCESS",
+      "notional": 9.012663
+    },
+    {
+      "timestamp": "2026-10-06T14:34:07.422219+00:00",
+      "side": "BUY",
+      "ticker": "PANW",
+      "status": "SUCCESS",
+      "notional": 9.0129327
+    },
+    {
+      "timestamp": "2026-10-06T14:34:05.978034+00:00",
+      "side": "BUY",
+      "ticker": "NOW",
+      "status": "SUCCESS",
+      "notional": 9.0125838
+    },
+    {
+      "timestamp": "2026-10-06T14:34:05.596912+00:00",
+      "side": "BUY",
+      "ticker": "MRVL",
+      "status": "SUCCESS",
+      "notional": 9.0112806
+    },
+    {
+      "timestamp": "2026-10-06T14:34:05.202544+00:00",
+      "side": "BUY",
+      "ticker": "GLW",
+      "status": "SUCCESS",
+      "notional": 9.0115562
+    },
+    {
+      "timestamp": "2026-10-06T14:34:04.812901+00:00",
+      "side": "BUY",
+      "ticker": "FTNT",
+      "status": "SUCCESS",
+      "notional": 9.013168
+    },
+    {
+      "timestamp": "2026-10-06T14:34:04.410221+00:00",
+      "side": "BUY",
+      "ticker": "CRWD",
+      "status": "SUCCESS",
+      "notional": 9.0127854
+    },
+    {
+      "timestamp": "2026-10-06T14:34:03.775679+00:00",
+      "side": "BUY",
+      "ticker": "AZO",
+      "status": "SUCCESS",
+      "notional": 9.0112176
+    },
+    {
+      "timestamp": "2026-10-06T14:33:43.050712+00:00",
+      "side": "SELL",
+      "ticker": "ZBH",
+      "status": "FAILED",
+      "notional": 15.6222353
+    },
+    {
+      "timestamp": "2026-10-06T14:33:42.635521+00:00",
+      "side": "SELL",
+      "ticker": "STLD",
+      "status": "SUCCESS",
+      "notional": 15.4153268
+    },
+    {
+      "timestamp": "2026-10-06T14:33:42.224627+00:00",
+      "side": "SELL",
+      "ticker": "SLB",
+      "status": "SUCCESS",
+      "notional": 10.866124
+    },
+    {
+      "timestamp": "2026-10-06T14:33:41.562464+00:00",
+      "side": "SELL",
+      "ticker": "NUE",
+      "status": "SUCCESS",
+      "notional": 15.4914632
+    },
+    {
+      "timestamp": "2026-10-06T14:33:41.187176+00:00",
+      "side": "SELL",
+      "ticker": "HAL",
+      "status": "SUCCESS",
+      "notional": 15.1546035
+    },
+    {
+      "timestamp": "2026-10-06T14:33:40.790449+00:00",
+      "side": "SELL",
+      "ticker": "FICO",
+      "status": "FAILED",
+      "notional": 11.1455576
+    },
+    {
+      "timestamp": "2026-10-06T14:33:40.353884+00:00",
+      "side": "SELL",
+      "ticker": "BABA",
+      "status": "SUCCESS",
+      "notional": 15.3914696
+    },
+    {
+      "timestamp": "2026-10-06T14:33:39.765967+00:00",
+      "side": "SELL",
+      "ticker": "APP",
+      "status": "FAILED",
+      "notional": 15.3968242
+    },
+    {
+      "timestamp": "2026-10-05T17:35:11.355003+00:00",
+      "side": "BUY",
+      "ticker": "VLO",
+      "status": "FAILED",
+      "notional": 11.114928
+    },
+    {
+      "timestamp": "2026-10-05T17:35:10.944012+00:00",
+      "side": "BUY",
+      "ticker": "SLB",
+      "status": "SUCCESS",
+      "notional": 11.112752
+    },
+    {
+      "timestamp": "2026-10-05T17:35:10.264033+00:00",
+      "side": "BUY",
+      "ticker": "FICO",
+      "status": "SUCCESS",
+      "notional": 11.1136255
+    },
+    {
+      "timestamp": "2026-10-05T17:34:49.487313+00:00",
+      "side": "SELL",
+      "ticker": "VALE",
+      "status": "SUCCESS",
+      "notional": 15.58194
+    },
+    {
+      "timestamp": "2026-10-05T17:34:49.053046+00:00",
+      "side": "SELL",
+      "ticker": "PDD",
+      "status": "SUCCESS",
+      "notional": 15.546762
+    },
+    {
+      "timestamp": "2026-10-05T17:34:48.189542+00:00",
+      "side": "SELL",
+      "ticker": "ABT",
+      "status": "SUCCESS",
+      "notional": 15.6191815
+    },
+    {
+      "timestamp": "2026-10-05T16:28:38.327821+00:00",
+      "side": "BUY",
+      "ticker": "ZBH",
+      "status": "SUCCESS",
+      "notional": 15.7253151
+    },
+    {
+      "timestamp": "2026-10-05T16:28:37.632839+00:00",
+      "side": "BUY",
+      "ticker": "VALE",
+      "status": "SUCCESS",
+      "notional": 15.7255852
+    },
+    {
+      "timestamp": "2026-10-05T16:28:37.217253+00:00",
+      "side": "BUY",
+      "ticker": "STLD",
+      "status": "SUCCESS",
+      "notional": 15.7250628
+    },
+    {
+      "timestamp": "2026-10-05T16:28:36.816555+00:00",
+      "side": "BUY",
+      "ticker": "PDD",
+      "status": "SUCCESS",
+      "notional": 15.726274
+    },
+    {
+      "timestamp": "2026-10-05T16:28:36.432933+00:00",
+      "side": "BUY",
+      "ticker": "NUE",
+      "status": "SUCCESS",
+      "notional": 15.7257306
+    },
+    {
+      "timestamp": "2026-10-05T16:28:36.019507+00:00",
+      "side": "BUY",
+      "ticker": "HAL",
+      "status": "SUCCESS",
+      "notional": 15.728009
+    },
+    {
+      "timestamp": "2026-10-05T16:28:35.348200+00:00",
+      "side": "BUY",
+      "ticker": "BABA",
+      "status": "SUCCESS",
+      "notional": 15.7258908
+    },
+    {
+      "timestamp": "2026-10-05T16:28:34.930048+00:00",
+      "side": "BUY",
+      "ticker": "APP",
+      "status": "SUCCESS",
+      "notional": 15.7249268
+    },
+    {
+      "timestamp": "2026-10-05T16:28:34.518234+00:00",
+      "side": "BUY",
+      "ticker": "ADSK",
+      "status": "SUCCESS",
+      "notional": 15.7263463
+    },
+    {
+      "timestamp": "2026-10-05T16:28:33.808382+00:00",
+      "side": "BUY",
+      "ticker": "ABT",
+      "status": "SUCCESS",
+      "notional": 15.7261309
+    },
+    {
+      "timestamp": "2026-10-05T16:28:12.831664+00:00",
+      "side": "SELL",
+      "ticker": "AAPL",
+      "status": "SUCCESS",
+      "notional": 4.9653309
+    }
+  ],
+  "trade_summary": {
+    "total": 98,
+    "buys": 46,
+    "sells": 37,
+    "failed": 15
+  }
+};
+
+const fmt$ = (v, decimals=2) => v == null ? '—' : (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString('en-US', {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
+const fmtPct = (v, decimals=2) => v == null || isNaN(v) ? '—' : (v >= 0 ? '+' : '') + (v * 100).toFixed(decimals) + '%';
+const fmtDateTime = (iso) => new Date(iso).toLocaleString('en-US', {timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'});
+const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-US', {timeZone: 'America/Chicago', month: 'long', day: 'numeric', year: 'numeric'});
+
+Chart.defaults.color = '#8b95a3';
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.borderColor = '#262c34';
+
+function render() {
+  const d = DASHBOARD_DATA;
+
+  document.getElementById('strategyName').textContent = d.strategy_name;
+  document.getElementById('strategyDesc').textContent = d.strategy_description;
+  document.getElementById('liveSince').textContent = 'Live since ' + fmtDate(d.inception_timestamp);
+  document.getElementById('generatedNote').textContent = 'Snapshot generated ' + new Date(d.generated_at).toLocaleString('en-US', {timeZone: 'America/Chicago', dateStyle: 'medium', timeStyle: 'short'}) + ' CT';
+
+  // --- top cards ---
+  document.getElementById('cardPortfolioValue').textContent = fmt$(d.current.true_total_value);
+  document.getElementById('cardPortfolioSub').innerHTML = `Settled $${d.current.settled_cash.toFixed(2)} + pending settlement $${d.current.unsettled_cash.toFixed(2)} + positions $${d.current.managed_positions_market_value.toFixed(2)}`;
+
+  document.getElementById('cardFreeCash').textContent = fmt$(d.current.settled_cash);
+  document.getElementById('cardFreeCashSub').innerHTML = d.current.unsettled_cash > 0.01
+    ? `+ ${fmt$(d.current.unsettled_cash)} pending settlement (~1-2 business days)`
+    : 'fully settled';
+
+  const pnlEl = document.getElementById('cardTotalPnl');
+  pnlEl.textContent = fmt$(d.total_pnl_dollars);
+  pnlEl.className = 'card-value ' + (d.total_pnl_dollars >= 0 ? 'pos' : 'neg');
+  document.getElementById('cardTotalPnlSub').innerHTML = `${fmtPct(d.total_pnl_pct)} &nbsp;·&nbsp; from ${fmt$(d.inception_nav)} on ${fmtDate(d.inception_timestamp)}`;
+
+  document.getElementById('cardPositions').textContent = d.current.managed_positions.length;
+  document.getElementById('cardPositionsSub').textContent = `in the managed halal universe right now`;
+
+  // --- NAV chart ---
+  const navLabels = d.nav_history.map(p => fmtDateTime(p.timestamp));
+  const navDollar = d.nav_history.map(p => p.nav);
+  const navPct = d.nav_history.map(p => (p.nav / d.inception_nav - 1) * 100);
+
+  let navMode = 'dollar';
+  const ctx = document.getElementById('navChart').getContext('2d');
+  const navChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: navLabels,
+      datasets: [{
+        label: 'NAV',
+        data: navDollar,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59,130,246,0.08)',
+        borderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointBackgroundColor: '#3b82f6',
+        tension: 0.15,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#14181d', borderColor: '#262c34', borderWidth: 1,
+          titleColor: '#e8ecf1', bodyColor: '#e8ecf1', padding: 10,
+          callbacks: {
+            label: (ctx) => navMode === 'pct'
+              ? 'Return since inception: ' + ctx.parsed.y.toFixed(2) + '%'
+              : 'NAV: $' + ctx.parsed.y.toFixed(2)
+          }
+        }
+      },
+      scales: {
+        y: { grid: { color: '#1b2026' }, ticks: { callback: v => navMode === 'pct' ? v + '%' : '$' + v } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  document.querySelectorAll('.chart-toggle .toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.chart-toggle .toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      navMode = btn.dataset.mode;
+      navChart.data.datasets[0].data = navMode === 'pct' ? navPct : navDollar;
+      navChart.options.scales.y.ticks.callback = v => navMode === 'pct' ? v.toFixed(0) + '%' : '$' + v;
+      navChart.update();
+    });
+  });
+
+  // --- trades chart (notional by side over time, plotted against a shared category axis so no
+  // date-adapter dependency is needed — index position is the only thing that needs to line up) ---
+  const realTrades = d.trades.filter(t => t.status !== 'DRY_RUN').slice().reverse();
+  const tradeLabels = realTrades.map(t => fmtDateTime(t.timestamp));
+  const buyPoints = realTrades
+    .map((t, x) => ({t, x}))
+    .filter(({t}) => t.side === 'BUY' && t.notional != null)
+    .map(({t, x}) => ({x, y: t.notional}));
+  const sellPoints = realTrades
+    .map((t, x) => ({t, x}))
+    .filter(({t}) => t.side === 'SELL' && t.notional != null)
+    .map(({t, x}) => ({x, y: t.notional}));
+
+  new Chart(document.getElementById('tradesChart').getContext('2d'), {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { label: 'Buy', data: buyPoints, backgroundColor: '#16c784', pointRadius: 5, pointHoverRadius: 7 },
+        { label: 'Sell', data: sellPoints, backgroundColor: '#ea3943', pointRadius: 5, pointHoverRadius: 7 },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 10, padding: 14, font: { size: 11.5 } } },
+        tooltip: {
+          backgroundColor: '#14181d', borderColor: '#262c34', borderWidth: 1,
+          titleColor: '#e8ecf1', bodyColor: '#e8ecf1', padding: 10,
+          callbacks: { label: (ctx) => `$${ctx.raw.y.toFixed(2)} — ${tradeLabels[ctx.raw.x] || ''}` }
+        }
+      },
+      scales: {
+        x: {
+          type: 'linear', min: -1, max: tradeLabels.length,
+          grid: { color: '#1b2026' },
+          ticks: {
+            maxRotation: 0, autoSkip: true, maxTicksLimit: 8,
+            callback: (v) => tradeLabels[v] !== undefined ? tradeLabels[v] : ''
+          }
+        },
+        y: { grid: { color: '#1b2026' }, ticks: { callback: v => '$' + v }, title: { display: true, text: 'Notional ($)', color: '#5a6473', font: { size: 11 } } }
+      }
+    }
+  });
+
+  // --- trade table ---
+  const tbody = document.getElementById('tradeTableBody');
+  tbody.innerHTML = d.trades.map(t => `
+    <tr>
+      <td>${fmtDateTime(t.timestamp)}</td>
+      <td class="side-${t.side.toLowerCase()}">${t.side}</td>
+      <td>${t.ticker}</td>
+      <td><span class="badge badge-${t.status === 'SUCCESS' ? 'success' : 'failed'}">${t.status}</span></td>
+      <td style="text-align:right">${t.notional != null ? '$' + t.notional.toFixed(2) : '—'}</td>
+    </tr>
+  `).join('');
+
+  // --- stats panel ---
+  const s = d.stats;
+  document.getElementById('statsBody').innerHTML = `
+    <div class="stat-row"><span class="stat-label">Max drawdown</span><span class="stat-value neg">${fmtPct(s.max_drawdown_pct)}</span></div>
+    <div class="stat-note">at ${fmtDateTime(s.max_drawdown_at)}</div>
+    <div class="stat-row"><span class="stat-label">Mean cycle return</span><span class="stat-value ${s.mean_cycle_return_pct >= 0 ? 'pos' : 'neg'}">${fmtPct(s.mean_cycle_return_pct)}</span></div>
+    <div class="stat-row"><span class="stat-label">Cycle return std. dev.</span><span class="stat-value">${(s.std_cycle_return_pct * 100).toFixed(2)}%</span></div>
+    <div class="stat-row"><span class="stat-label">Naive Sharpe (per cycle)</span><span class="stat-value">${s.naive_sharpe_per_cycle.toFixed(2)}</span></div>
+    <div class="stat-note">⚠ based on only ${s.n_observations} cycle observations over a few days — not annualized, not statistically meaningful yet. Treat as directional only.</div>
+    <div class="stat-row"><span class="stat-label">Trades placed</span><span class="stat-value">${d.trade_summary.total}</span></div>
+    <div class="stat-row"><span class="stat-label">Successful buys</span><span class="stat-value pos">${d.trade_summary.buys}</span></div>
+    <div class="stat-row"><span class="stat-label">Successful sells</span><span class="stat-value">${d.trade_summary.sells}</span></div>
+    <div class="stat-row"><span class="stat-label">Failed orders</span><span class="stat-value neg">${d.trade_summary.failed}</span></div>
+  `;
+
+  // --- holdings ---
+  document.getElementById('holdingsSubtitle').textContent = `${d.current.managed_positions.length} positions, $${d.current.managed_positions_market_value.toFixed(2)} total`;
+  const sortedHoldings = d.current.managed_positions.slice().sort((a, b) => b.market_value - a.market_value);
+  document.getElementById('holdingsBody').innerHTML = sortedHoldings.map(p => `
+    <div class="holding-row">
+      <div>
+        <div class="holding-ticker">${p.ticker}</div>
+        <div class="holding-detail">${p.shares.toFixed(5)} sh @ $${p.cost_price.toFixed(2)}</div>
+      </div>
+      <div class="holding-value">
+        <div>$${p.market_value.toFixed(2)}</div>
+        <div class="${p.unrealized_pl >= 0 ? 'pos' : 'neg'}" style="font-size:11px">${p.unrealized_pl >= 0 ? '+' : ''}$${p.unrealized_pl.toFixed(2)}</div>
+      </div>
+    </div>
+  `).join('');
+
+  if (d.current.orphaned_positions && d.current.orphaned_positions.length) {
+    const box = document.getElementById('orphanBox');
+    box.style.display = 'block';
+    box.innerHTML = d.current.orphaned_positions.map(p => `
+      <b>${p.ticker}</b> — ${p.shares.toFixed(5)} sh, worth $${p.market_value.toFixed(2)} (${p.unrealized_pl >= 0 ? '+' : ''}$${p.unrealized_pl.toFixed(2)}).
+      Bought by this strategy, then removed from the halal universe — it's now orphaned: the
+      strategy will never automatically sell it again. Excluded from every number above. Sell it
+      manually in Webull if you want it gone.
+    `).join('<br><br>');
+  }
+
+  // --- data notes ---
+  const droppedHtml = d.nav_dropped.length ? d.nav_dropped.map(p => `<li><code>${fmtDateTime(p.timestamp)}</code> — ${p.reason}</li>`).join('') : '<li>none</li>';
+  document.getElementById('notesBody').innerHTML = `
+    <ul>
+      <li><b>Only this strategy's own money is shown.</b> Everything above excludes every other
+      holding in the account that existed before this strategy started, or that it never bought —
+      those were never this strategy's capital.</li>
+      <li><b>The NAV chart</b> plots this strategy's own computed NAV (settled cash + managed
+      position value) at the start of each rebalance cycle, exactly as the live script logs it —
+      the same method at every point, so it's internally consistent.</li>
+      <li><b>One reading was dropped</b> as a confirmed bad data point (not a real NAV):
+        <ul>${droppedHtml}</ul>
+      </li>
+      <li><b>"Portfolio Value" at the top</b> includes cash pending settlement (from a recent
+      sell, typically clears in 1-2 business days), which the chart's own NAV method deliberately
+      excludes (by design, to make good-faith violations structurally impossible). That's why the
+      portfolio value card and the chart's most recent point can differ — both are real, they're
+      just measuring slightly different things.</li>
+      <li><b>Trade notional</b> is matched from each order's preview-order response at execution
+      time, not a separate estimate.</li>
+      <li>Generate a fresh snapshot any time with <code>python3 build_dashboard.py</code> from
+      <code>relative_strength_rotation/live/</code>.</li>
+    </ul>
+  `;
+}
+
+render();
+</script>
+</body>
+</html>
