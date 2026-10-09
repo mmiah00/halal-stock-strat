@@ -49,11 +49,22 @@ EXCHANGE = 'SMART'
 CURRENCY = 'USD'
 USE_RTH = True
 
-SKIP_TICKERS = {'NVDA'}       # deliberately deferred: during an unusually unstable TWS stretch on
-                               # 2026-10-07, NVDA's exceptionally high tick density meant its fetch
-                               # window was long enough to catch nearly every connectivity blip,
-                               # repeatedly costing retries/time without finishing. Revisit it on
-                               # its own once the rest of the universe is done and TWS is stable.
+SKIP_TICKERS = {'NVDA', 'MRVL'}  # deliberately deferred:
+                               # NVDA — during an unusually unstable TWS stretch on 2026-10-07,
+                               # its exceptionally high tick density meant its fetch window was
+                               # long enough to catch nearly every connectivity blip, repeatedly
+                               # costing retries/time without finishing.
+                               # MRVL — observed 2026-10-09: its first chunk fetches fine in
+                               # isolation (confirmed directly, both with a fresh clientId and
+                               # with this script's own clientId=85 — not a pacing/throttling
+                               # issue), but fetch_ticker_ticks's walk-back loop hangs on it
+                               # reproducibly every single time, at some chunk deep enough that it
+                               # isn't the first request. Since there's no per-chunk checkpointing,
+                               # every watchdog-triggered restart re-walks MRVL from scratch and
+                               # re-hits the same hang — wasting 15+ minutes per cycle with zero
+                               # progress. Revisit once the rest of the universe is done — likely
+                               # worth adding per-chunk checkpointing or a smaller CHUNK_SIZE for
+                               # this specific name rather than retrying the same approach again.
 
 LOOKBACK_TRADING_DAYS = 1     # see module docstring — deliberately small to start
 LOOKBACK_CALENDAR_BUFFER_DAYS = 1.5  # ~1 trading day's worth; a touch generous rather than precise
