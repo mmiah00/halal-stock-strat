@@ -47,6 +47,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from rotation_common import load_universe
 from webull_common import build_trade_client, _as_json
 
 HERE = Path(__file__).resolve().parent
@@ -54,7 +55,12 @@ LOG_PATH = HERE / 'relative_strength_rotation_webull_intraday.log'
 TRADE_LOG_CSV = HERE / 'webull_intraday_trade_log.csv'
 OUTPUT_HTML = HERE / 'dashboard.html'
 
-MANAGED_UNIVERSE_NOW = {'PDD', 'PANW', 'ORCL', 'GILD', 'FCX', 'DDOG', 'CRWD', 'BABA', 'AMZN'}
+# NOTE: this MUST be computed fresh from the current equities-list.csv, not hardcoded — the
+# rotation strategy's whole point is rotating into a different top-10 basket every ~2 hours, so a
+# fixed snapshot of "currently held" tickers goes stale within one cycle. A hardcoded 9-ticker set
+# here (bug, fixed 2026-10-15) silently misclassified every actual current holding as "unmanaged"
+# once the real basket rotated away from it, making the dashboard report a bogus ~55% loss that
+# was actually a dashboard bug, not a real one.
 ORPHANED_TICKERS = {'PLTR'}  # bought while in the universe, since removed (not halal) — see dashboard notes
 DROPPED_BAD_NAV_TIMESTAMPS = {
     '2026-10-07T17:35:00+00:00': 'free cash read as -$16.90 (impossible for this cash account) — stale 429-rate-limited balance read',
@@ -137,10 +143,24 @@ def build_trade_table(log_text: str) -> tuple[list[dict], dict]:
 
 
 def fetch_current_state() -> dict:
+    current_universe = set(load_universe())  # fresh read of equities-list.csv, not a stale snapshot
+
     trade_client, account_id = build_trade_client(log)
     positions_resp = _as_json(trade_client.account_v2.get_account_position(account_id))
     balance_resp = _as_json(trade_client.account_v2.get_account_balance(account_id))
     usd = balance_resp['account_currency_assets'][0]
+
+    settled_cash = float(usd['settled_cash'])
+    settled_cash_warning = None
+    if settled_cash < 0:
+        # Impossible for a cash account — a stale/rate-limited balance read (same signature as the
+        # 2026-10-07 bad NAV point this dashboard already drops from history). Surface it rather
+        # than silently show a number that can't be true; rerunning this script usually clears it.
+        settled_cash_warning = (
+            f'Settled cash just read as ${settled_cash:.2f}, which is impossible for a cash '
+            'account — almost certainly a stale/rate-limited API read, not a real negative '
+            'balance. Rerun build_dashboard.py for a corrected reading.'
+        )
 
     managed, orphaned, unmanaged = [], [], []
     for p in positions_resp:
@@ -149,7 +169,7 @@ def fetch_current_state() -> dict:
             'last_price': float(p['last_price']), 'market_value': float(p['market_value']),
             'unrealized_pl': float(p['unrealized_profit_loss']),
         }
-        if p['symbol'] in MANAGED_UNIVERSE_NOW:
+        if p['symbol'] in current_universe:
             managed.append(entry)
         elif p['symbol'] in ORPHANED_TICKERS:
             orphaned.append(entry)
@@ -157,7 +177,8 @@ def fetch_current_state() -> dict:
             unmanaged.append(entry)
 
     return {
-        'settled_cash': float(usd['settled_cash']),
+        'settled_cash': settled_cash,
+        'settled_cash_warning': settled_cash_warning,
         'unsettled_cash': float(usd['unsettled_cash']),
         'managed_positions': managed,
         'orphaned_positions': orphaned,
@@ -231,3 +252,13 @@ def main() -> int:
 
 if __name__ == '__main__':
     raise SystemExit(main())
+
+# --------------------------------------------------------------------------------------
+# Crontab line — regenerates dashboard.html every 30 minutes during market hours (8am-4pm CT,
+# weekdays), so a tab left open (auto-refreshing every 5 min, see dashboard_template.html) stays
+# reasonably current without needing a manual rerun. Read-only: this never places an order or
+# touches rotation_email_state.json, only reads the live Webull account and the intraday script's
+# own log, so it's a much lower-risk cron addition than anything trading-related in this project.
+#
+# */30 8-15 * * 1-5 /home/mmiah/.venv/bin/python3 /home/mmiah/halal-stock-strat/relative_strength_rotation/live/build_dashboard.py >> /home/mmiah/halal-stock-strat/relative_strength_rotation/live/dashboard_build_cron.log 2>&1
+# --------------------------------------------------------------------------------------

@@ -52,6 +52,10 @@
   }
   .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px rgba(22,199,132,0.2); }
   .generated-note { color: var(--text-faint); font-size: 12px; margin-top: 10px; }
+  .data-warning {
+    background: rgba(234,57,67,0.1); border: 1px solid rgba(234,57,67,0.35); color: var(--red);
+    font-size: 12.5px; font-weight: 600; padding: 9px 14px; border-radius: 8px; margin-top: 12px;
+  }
 
   .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 24px 0; }
   @media (max-width: 900px) { .cards { grid-template-columns: repeat(2, 1fr); } }
@@ -135,6 +139,7 @@
       <span class="live-badge"><span class="live-dot"></span><span id="liveSince"></span></span>
     </div>
     <div class="generated-note" id="generatedNote"></div>
+    <div class="data-warning" id="dataWarning" style="display:none;"></div>
   </div>
 </header>
 
@@ -227,7 +232,12 @@ function render() {
   document.getElementById('strategyName').textContent = d.strategy_name;
   document.getElementById('strategyDesc').textContent = d.strategy_description;
   document.getElementById('liveSince').textContent = 'Live since ' + fmtDate(d.inception_timestamp);
-  document.getElementById('generatedNote').textContent = 'Snapshot generated ' + new Date(d.generated_at).toLocaleString('en-US', {timeZone: 'America/Chicago', dateStyle: 'medium', timeStyle: 'short'}) + ' CT';
+  document.getElementById('generatedNote').textContent = 'Snapshot generated ' + new Date(d.generated_at).toLocaleString('en-US', {timeZone: 'America/Chicago', dateStyle: 'medium', timeStyle: 'short'}) + ' CT — this page auto-refreshes every 5 min';
+  if (d.current.settled_cash_warning) {
+    const w = document.getElementById('dataWarning');
+    w.style.display = 'block';
+    w.textContent = '⚠ ' + d.current.settled_cash_warning;
+  }
 
   // --- top cards ---
   document.getElementById('cardPortfolioValue').textContent = fmt$(d.current.true_total_value);
@@ -429,6 +439,13 @@ function render() {
 }
 
 render();
+
+// Auto-reload so a tab left open picks up each fresh snapshot without a manual refresh.
+// build_dashboard.py is cron-scheduled every 30 minutes during market hours (see its own
+// comment block), so this reloads a bit more often than that to pick a new one up promptly
+// without being so frequent it's disruptive if you're mid-read.
+const AUTO_RELOAD_MINUTES = 5;
+setTimeout(() => location.reload(), AUTO_RELOAD_MINUTES * 60 * 1000);
 </script>
 </body>
 </html>

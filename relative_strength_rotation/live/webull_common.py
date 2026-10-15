@@ -38,7 +38,16 @@ POWERSHELL_EXE = '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe'
 
 WEBULL_REGION_ID = 'us'
 WEBULL_MARKET = 'US'
-LIMIT_OFFSET_BPS = 50  # suggested marketable limit: buy at last*(1+offset), sell at last*(1-offset)
+LIMIT_OFFSET_BPS = 100  # suggested marketable limit: buy at last*(1+offset), sell at last*(1-offset)
+# Widened from 50bps on 2026-10-15 after repeated OPENAPI_FRACT_NO_MKT_LMT_QTY_GREAT_1 failures
+# (e.g. SELL CRWD, BUY DHI that day): ref_price is captured early in the cycle, before the other
+# ~130 tickers get fetched (a couple of minutes later), so by the time the order is placed the
+# market can have drifted past a tight collar — Webull's fractional-order marketability check is
+# stricter about this than a typical limit order. At this account's trade sizes (~$10-15/order),
+# 100bps of extra worst-case slippage is a few cents, a small guaranteed cost traded for fewer
+# failed rebalance legs. Revisit if failures persist even at this width — the real fix then would
+# be re-quoting right before each order instead of reusing the ranking-fetch price, at the cost of
+# more Webull API calls (which are already the thing getting 429-rate-limited).
 
 
 # --------------------------------------------------------------------------------------
