@@ -15,7 +15,7 @@ increasing order of data requirements and modeling complexity.
 |---|---|---|---|
 | 1 | Intraday momentum + reversal baseline — does a stock's own trailing k-minute return predict its forward h-minute return, and in which direction? | 1-min OHLCV | **Done** |
 | 2 | Add VWAP distance, volume surprise, and relative strength as conditioning features on top of the Phase 1 reversal signal | 1-min OHLCV (same data, new features) | **Done (initial pass)** |
-| 3 | Add trade imbalance (buy volume vs. sell volume) | Trade-level tick data | Not started |
+| 3 | Add trade imbalance (buy volume vs. sell volume) | Trade-level tick data | **Infrastructure done, first analysis inconclusive** |
 | 4 | Add Level 2 order-book imbalance (bid/ask depth) | L2 order book data | Not started |
 | 5 | Train a model (e.g. XGBoost) predicting 5-minute forward excess return from all of the above features combined | All of the above | Not started |
 | 6 | Trade only when predicted return exceeds estimated transaction cost by a meaningful margin | Model from Phase 5 + a real cost model | Not started |
@@ -85,6 +85,54 @@ progress, but still not a strategy that survives a realistic (2bps+) cost assump
 notebook's Key Findings for the full numbers and caveats (one month of data, mild look-ahead in
 the volume-surprise baseline, multiple-comparisons risk from bucketing three features on a
 single month).
+
+## Phase 3 — trade imbalance (infrastructure done, first analysis inconclusive)
+
+**Files**: `download_trade_ticks.py` (resumable historical-tick downloader, tick-rule
+buy/sell classification, caches to `data/ticks/{TICKER}.csv`), `run_with_watchdog.sh` (external
+process supervisor — restarts the downloader if its log goes stale, since a real TWS hang can't
+always be caught from inside the script itself), `phase3_trade_imbalance.ipynb`.
+
+**Goal**: add trade imbalance (buy-initiated vs. sell-initiated volume, via the tick rule — see
+`download_trade_ticks.py`'s docstring for why not full Lee-Ready) as a fourth conditioning
+feature alongside Phase 2's three, to see whether it adds genuinely new selectivity beyond what
+price/volume-derived features already capture.
+
+**What actually happened**: the tick download turned into the hardest engineering problem in
+this whole project so far — not because the idea was hard, but because of a string of real bugs
+and an unusually unstable TWS stretch over 2026-10-07 through 2026-10-10:
+
+- A connectivity blip left a request hanging forever (no timeout on the sync call) — fixed with
+  chunk-level retries.
+- A hard IB session drop ("Peer closed connection") cascaded into ~20 wasted tickers before a
+  per-ticker reconnect check was added.
+- An attempt to add a timeout via `asyncio.wait_for` around the request introduced a *worse* bug:
+  once a timeout fired, every subsequent request silently returned empty results instead of
+  raising — 20+ real tickers logged as "no data" with no error at all. Reverted to the plain
+  synchronous call and moved timeout protection to an external watchdog script instead, which
+  restarts the whole process if its log goes stale rather than fighting asyncio cancellation
+  semantics in-process.
+- Three tickers (NVDA, MRVL, META) hang reproducibly on every attempt at some chunk deep into
+  their fetch — confirmed NOT a pacing/clientId issue (both work fine in isolated single-chunk
+  tests) — and are skipped for now (see `SKIP_TICKERS`), since there's no per-chunk checkpointing
+  yet to avoid re-walking from scratch on every retry.
+- On 2026-10-10 (a Saturday), the IB connection itself stopped completing its handshake entirely
+  — consistent with IBKR's weekend maintenance window — and the download was paused rather than
+  left crash-looping every 5 seconds.
+
+**First analysis result (2026-10-10, 28 tickers cached)**: inconclusive, for a data reason more
+than a finding about trade imbalance itself. The multi-day download means different tickers'
+"most recent ~1.5 days" of tick data now land on different calendar windows, and only 11 of 28
+tickers had any overlap at all with the (older, frozen-as-of-Oct-7) minute-bar cache — over
+just ~1 day. Numbers from that narrow sample are noisy and partly contradict Phase 2's own
+findings on the same names (e.g. relative_strength's bucket pattern inverted), which is itself
+evidence the sample is too small and misaligned to trust yet, not a real trade-imbalance result.
+See the notebook's Key Findings for the full numbers and the data-alignment explanation.
+
+**Next step**: once TWS is confirmed stable again, either refresh the minute-bar cache to the
+same date range as the tick cache, or derive 1-minute bars directly from the tick data for the
+overlapping tickers, then re-run the Phase 3 notebook on a properly aligned, full-width sample
+before drawing any real conclusion about trade imbalance.
 
 ## A note on what's NOT being chased yet
 

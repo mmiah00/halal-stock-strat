@@ -49,7 +49,7 @@ EXCHANGE = 'SMART'
 CURRENCY = 'USD'
 USE_RTH = True
 
-SKIP_TICKERS = {'NVDA', 'MRVL'}  # deliberately deferred:
+SKIP_TICKERS = {'NVDA', 'MRVL', 'META'}  # deliberately deferred:
                                # NVDA — during an unusually unstable TWS stretch on 2026-10-07,
                                # its exceptionally high tick density meant its fetch window was
                                # long enough to catch nearly every connectivity blip, repeatedly
@@ -65,6 +65,10 @@ SKIP_TICKERS = {'NVDA', 'MRVL'}  # deliberately deferred:
                                # progress. Revisit once the rest of the universe is done — likely
                                # worth adding per-chunk checkpointing or a smaller CHUNK_SIZE for
                                # this specific name rather than retrying the same approach again.
+                               # META — same signature as MRVL (3 consecutive 15+ min stalls on
+                               # the exact same ticker, 2026-10-09), skipped for the same reason.
+                               # Two names with this same symptom makes a per-chunk checkpointing
+                               # fix more worth doing than first assumed — see the MRVL note.
 
 LOOKBACK_TRADING_DAYS = 1     # see module docstring — deliberately small to start
 LOOKBACK_CALENDAR_BUFFER_DAYS = 1.5  # ~1 trading day's worth; a touch generous rather than precise

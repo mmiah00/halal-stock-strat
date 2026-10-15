@@ -28,6 +28,14 @@ except ImportError as exc:
 HERE = Path(__file__).resolve().parent
 CREDENTIALS_PATH = HERE / 'webull_credentials.env'
 
+# Absolute path, not the bare 'powershell.exe' command: an interactive WSL shell's PATH is
+# extended with the Windows PATH (via WSL interop), so 'powershell.exe' resolves fine there, but
+# cron jobs run with a minimal PATH that doesn't include it — confirmed 2026-10-15 when a cron
+# fire failed with FileNotFoundError even though the toast worked in every manual/interactive
+# test throughout this project. wslpath (also used below) is unaffected since it lives at
+# /usr/bin/wslpath, already on cron's default PATH.
+POWERSHELL_EXE = '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe'
+
 WEBULL_REGION_ID = 'us'
 WEBULL_MARKET = 'US'
 LIMIT_OFFSET_BPS = 50  # suggested marketable limit: buy at last*(1+offset), sell at last*(1-offset)
@@ -360,7 +368,7 @@ $content = New-BTContent -Visual $visual -Launch {_ps_quote('file:///' + win_pat
 Submit-BTNotification -Content $content
 '''
         result = subprocess.run(
-            ['powershell.exe', '-ExecutionPolicy', 'Bypass', '-Command', ps_script],
+            [POWERSHELL_EXE, '-ExecutionPolicy', 'Bypass', '-Command', ps_script],
             capture_output=True, text=True, timeout=30,
         )
         if result.returncode != 0:
@@ -400,7 +408,7 @@ $content = New-BTContent -Visual $visual -Launch {_ps_quote('file:///' + win_log
 Submit-BTNotification -Content $content
 '''
         result = subprocess.run(
-            ['powershell.exe', '-ExecutionPolicy', 'Bypass', '-Command', ps_script],
+            [POWERSHELL_EXE, '-ExecutionPolicy', 'Bypass', '-Command', ps_script],
             capture_output=True, text=True, timeout=30,
         )
         if result.returncode != 0:
