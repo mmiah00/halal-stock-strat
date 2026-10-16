@@ -103,6 +103,16 @@ IB_PORT = 7497
 IB_CLIENT_ID = 74  # distinct from the monthly script's (73) and the email/dashboard scripts'
 
 REBALANCE_INTERVAL_HOURS = 2
+# The four intended rebalance times (America/Chicago) this is cron-scheduled for, and how far
+# outside them a firing is still trusted. Added 2026-10-16 after cron fired this script twice in
+# one day at times that don't correspond to any cron schedule under any timezone interpretation
+# (11:17 and 13:35 CT, expected 10:30 and 12:30) — traced to WSL's VM clock drifting and being
+# resynced (confirmed via repeated "Clock change detected" entries in the system journal right
+# at those times), not a bug in the crontab or this script. is_market_open_now() alone doesn't
+# catch this, since both errant firings were still within real trading hours — this is a
+# narrower, independent check on top of it.
+SCHEDULED_TIMES_CT = [(8, 30), (10, 30), (12, 30), (14, 30)]
+SCHEDULE_TOLERANCE_MINUTES = 10
 BAR_SIZE = '1 hour'
 BAR_MINUTES = 60
 LOOKBACK_BARS = 6        # ~1 trading day of hourly bars; keeps the monthly strategy's 3:1 lookback:rebalance ratio
@@ -120,6 +130,18 @@ logging.basicConfig(
     handlers=[logging.FileHandler(LOG_PATH), logging.StreamHandler(sys.stdout)],
 )
 log = logging.getLogger('rsr_webull_intraday')
+
+
+# --------------------------------------------------------------------------------------
+# Scheduled-time sanity check — independent of is_market_open_now(), see SCHEDULED_TIMES_CT
+# --------------------------------------------------------------------------------------
+def is_within_scheduled_window(now_utc: pd.Timestamp) -> bool:
+    now_ct = now_utc.tz_convert('America/Chicago')
+    for hour, minute in SCHEDULED_TIMES_CT:
+        scheduled = now_ct.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if abs((now_ct - scheduled).total_seconds()) <= SCHEDULE_TOLERANCE_MINUTES * 60:
+            return True
+    return False
 
 
 # --------------------------------------------------------------------------------------
@@ -170,6 +192,14 @@ def main() -> int:
 
     if KILL_SWITCH_PATH.exists():
         log.warning('KILL_SWITCH_WEBULL_INTRADAY present at %s — exiting without touching the account', KILL_SWITCH_PATH)
+        return 0
+
+    if not is_within_scheduled_window(now):
+        log.warning('current time %s is not within %d minutes of a scheduled rebalance slot '
+                     '(8:30/10:30/12:30/14:30 CT) — exiting without trading. This guards against '
+                     'cron firing at an unexpected time, as observed 2026-10-16 due to WSL clock '
+                     'drift (see SCHEDULED_TIMES_CT\'s comment).',
+                     now.isoformat(), SCHEDULE_TOLERANCE_MINUTES)
         return 0
 
     if not is_market_open_now(now):

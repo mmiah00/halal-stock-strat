@@ -12,7 +12,10 @@ cd "$(dirname "$0")"
 SCRIPT=download_trade_ticks.py
 LOG=download_trade_ticks.log
 PYTHON=/home/mmiah/.venv/bin/python3
-STALE_MINUTES=15
+STALE_MINUTES=15  # briefly raised to 25 on 2026-10-15 on the theory ORCL was just slow, not
+                  # hung — it hung anyway (confirmed by a precise 1561s-stale measurement), so
+                  # ORCL was added to SKIP_TICKERS instead and this reverted to 15: a longer
+                  # threshold only delays catching a genuine hang, it doesn't rescue one.
 CHECK_INTERVAL_SECONDS=60
 
 while true; do
