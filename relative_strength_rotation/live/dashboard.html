@@ -221,7 +221,7 @@ const DASHBOARD_DATA = {
   "inception_date": "2026-10-05",
   "inception_timestamp": "2026-10-05T16:28:12+00:00",
   "inception_nav": 164.67,
-  "generated_at": "2026-10-20T20:00:02.170906+00:00",
+  "generated_at": "2026-10-23T20:05:04.873312+00:00",
   "nav_history": [
     {
       "timestamp": "2026-10-05T16:28:12+00:00",
@@ -274,6 +274,14 @@ const DASHBOARD_DATA = {
     {
       "timestamp": "2026-10-20T15:35:01+00:00",
       "nav": 156.78
+    },
+    {
+      "timestamp": "2026-10-21T15:39:45+00:00",
+      "nav": 156.28
+    },
+    {
+      "timestamp": "2026-10-22T17:35:04+00:00",
+      "nav": 156.25
     }
   ],
   "nav_dropped": [
@@ -283,125 +291,404 @@ const DASHBOARD_DATA = {
     }
   ],
   "current": {
-    "settled_cash": -2.32,
-    "settled_cash_warning": "Settled cash just read as $-2.32, which is impossible for a cash account \u2014 almost certainly a stale/rate-limited API read, not a real negative balance. Rerun build_dashboard.py for a corrected reading.",
-    "unsettled_cash": 28.47,
+    "settled_cash": 20.26,
+    "settled_cash_warning": null,
+    "unsettled_cash": 0.0,
     "managed_positions": [
       {
-        "ticker": "SNY",
-        "shares": 0.30438,
-        "cost_price": 41.23,
-        "last_price": 41.4,
-        "market_value": 12.6,
+        "ticker": "WM",
+        "shares": 0.0559,
+        "cost_price": 239.11,
+        "last_price": 240.0,
+        "market_value": 13.42,
         "unrealized_pl": 0.05
       },
       {
-        "ticker": "ORCL",
-        "shares": 0.0936,
-        "cost_price": 132.73,
-        "last_price": 131.09,
-        "market_value": 12.27,
-        "unrealized_pl": -0.15
+        "ticker": "RSG",
+        "shares": 0.05539,
+        "cost_price": 241.62,
+        "last_price": 240.45,
+        "market_value": 13.32,
+        "unrealized_pl": -0.06
       },
       {
-        "ticker": "ON",
-        "shares": 0.16502,
-        "cost_price": 75.3,
-        "last_price": 75.62,
-        "market_value": 12.48,
-        "unrealized_pl": 0.05
+        "ticker": "ROP",
+        "shares": 0.03085,
+        "cost_price": 435.51,
+        "last_price": 438.14,
+        "market_value": 13.52,
+        "unrealized_pl": 0.08
       },
       {
-        "ticker": "NXPI",
-        "shares": 0.05248,
-        "cost_price": 237.01,
-        "last_price": 237.6,
-        "market_value": 12.47,
-        "unrealized_pl": 0.03
-      },
-      {
-        "ticker": "MCHP",
-        "shares": 0.16303,
-        "cost_price": 75.99,
-        "last_price": 75.85,
-        "market_value": 12.37,
-        "unrealized_pl": -0.02
-      },
-      {
-        "ticker": "LLY",
-        "shares": 0.00966,
-        "cost_price": 1298.67,
-        "last_price": 1284.88,
-        "market_value": 12.41,
-        "unrealized_pl": -0.13
+        "ticker": "PHM",
+        "shares": 0.11202,
+        "cost_price": 118.21,
+        "last_price": 121.19,
+        "market_value": 13.58,
+        "unrealized_pl": 0.33
       },
       {
         "ticker": "LEN",
-        "shares": 0.15838,
-        "cost_price": 78.77,
-        "last_price": 78.69,
-        "market_value": 12.46,
-        "unrealized_pl": -0.01
+        "shares": 0.16002,
+        "cost_price": 83.56,
+        "last_price": 85.0,
+        "market_value": 13.6,
+        "unrealized_pl": 0.23
+      },
+      {
+        "ticker": "INTU",
+        "shares": 0.03759,
+        "cost_price": 353.92,
+        "last_price": 343.39,
+        "market_value": 12.91,
+        "unrealized_pl": -0.4
       },
       {
         "ticker": "HUBS",
-        "shares": 0.05088,
-        "cost_price": 245.52,
-        "last_price": 250.74,
-        "market_value": 12.76,
-        "unrealized_pl": 0.27
+        "shares": 0.05036,
+        "cost_price": 266.49,
+        "last_price": 272.0,
+        "market_value": 13.7,
+        "unrealized_pl": 0.28
       },
       {
-        "ticker": "APP",
-        "shares": 0.04526,
-        "cost_price": 275.49,
-        "last_price": 272.46,
-        "market_value": 12.33,
-        "unrealized_pl": -0.14
+        "ticker": "DHI",
+        "shares": 0.09094,
+        "cost_price": 146.71,
+        "last_price": 147.48,
+        "market_value": 13.41,
+        "unrealized_pl": 0.07
+      },
+      {
+        "ticker": "CSX",
+        "shares": 0.2575,
+        "cost_price": 51.81,
+        "last_price": 50.84,
+        "market_value": 13.09,
+        "unrealized_pl": -0.25
       },
       {
         "ticker": "ADBE",
-        "shares": 0.04924,
-        "cost_price": 254.14,
-        "last_price": 256.8,
-        "market_value": 12.64,
-        "unrealized_pl": 0.13
+        "shares": 0.0494,
+        "cost_price": 268.78,
+        "last_price": 264.1,
+        "market_value": 13.05,
+        "unrealized_pl": -0.23
       },
       {
-        "ticker": "MPWR",
-        "shares": 0.00225,
-        "cost_price": 1264.09,
-        "last_price": 1248.82,
-        "market_value": 2.81,
-        "unrealized_pl": -0.03
-      },
-      {
-        "ticker": "LRCX",
-        "shares": 0.0103,
-        "cost_price": 275.33,
-        "last_price": 263.45,
-        "market_value": 2.71,
-        "unrealized_pl": -0.12
+        "ticker": "DDOG",
+        "shares": 0.00942,
+        "cost_price": 275.71,
+        "last_price": 270.15,
+        "market_value": 2.54,
+        "unrealized_pl": -0.05
       }
     ],
     "orphaned_positions": [],
     "unmanaged_count": 8,
-    "generated_at": "2026-10-20T20:00:02.170906+00:00",
-    "managed_positions_market_value": 130.31,
-    "true_total_value": 156.46,
-    "consistent_method_value": 127.99000000000001
+    "generated_at": "2026-10-23T20:05:04.873312+00:00",
+    "managed_positions_market_value": 136.14,
+    "true_total_value": 156.39999999999998,
+    "consistent_method_value": 156.39999999999998
   },
-  "total_pnl_dollars": -8.20999999999998,
-  "total_pnl_pct": -0.04985729033825214,
+  "total_pnl_dollars": -8.27000000000001,
+  "total_pnl_pct": -0.05022165543207634,
   "stats": {
-    "n_observations": 13,
+    "n_observations": 15,
     "max_drawdown_pct": -0.4553349122487399,
     "max_drawdown_at": "2026-10-19T17:34:41+00:00",
-    "mean_cycle_return_pct": 0.043093330385077316,
-    "std_cycle_return_pct": 0.33751844666976266,
-    "naive_sharpe_per_cycle": 0.1276769634675435
+    "mean_cycle_return_pct": 0.036695629941727946,
+    "std_cycle_return_pct": 0.31089800205809026,
+    "naive_sharpe_per_cycle": 0.11803108961398694
   },
   "trades": [
+    {
+      "timestamp": "2026-10-22T17:35:33.106085+00:00",
+      "side": "BUY",
+      "ticker": "WM",
+      "status": "SUCCESS",
+      "notional": 13.478608
+    },
+    {
+      "timestamp": "2026-10-22T17:35:32.718851+00:00",
+      "side": "BUY",
+      "ticker": "RSG",
+      "status": "SUCCESS",
+      "notional": 13.4797104
+    },
+    {
+      "timestamp": "2026-10-22T17:35:32.351229+00:00",
+      "side": "BUY",
+      "ticker": "ROP",
+      "status": "SUCCESS",
+      "notional": 13.4792905
+    },
+    {
+      "timestamp": "2026-10-22T17:35:31.923805+00:00",
+      "side": "BUY",
+      "ticker": "PHM",
+      "status": "SUCCESS",
+      "notional": 13.4793666
+    },
+    {
+      "timestamp": "2026-10-22T17:35:31.219870+00:00",
+      "side": "BUY",
+      "ticker": "LEN",
+      "status": "SUCCESS",
+      "notional": 13.4784846
+    },
+    {
+      "timestamp": "2026-10-22T17:35:30.797710+00:00",
+      "side": "BUY",
+      "ticker": "INTU",
+      "status": "SUCCESS",
+      "notional": 13.4790222
+    },
+    {
+      "timestamp": "2026-10-22T17:35:30.388008+00:00",
+      "side": "BUY",
+      "ticker": "HUBS",
+      "status": "SUCCESS",
+      "notional": 13.4783504
+    },
+    {
+      "timestamp": "2026-10-22T17:35:29.963223+00:00",
+      "side": "BUY",
+      "ticker": "DHI",
+      "status": "SUCCESS",
+      "notional": 13.4791268
+    },
+    {
+      "timestamp": "2026-10-22T17:35:29.596880+00:00",
+      "side": "BUY",
+      "ticker": "CSX",
+      "status": "SUCCESS",
+      "notional": 13.480125
+    },
+    {
+      "timestamp": "2026-10-22T17:35:28.959703+00:00",
+      "side": "BUY",
+      "ticker": "ADBE",
+      "status": "SUCCESS",
+      "notional": 13.478296
+    },
+    {
+      "timestamp": "2026-10-22T17:35:08.229099+00:00",
+      "side": "SELL",
+      "ticker": "SLB",
+      "status": "SUCCESS",
+      "notional": 2.4565313
+    },
+    {
+      "timestamp": "2026-10-22T17:35:07.694715+00:00",
+      "side": "SELL",
+      "ticker": "SAP",
+      "status": "SUCCESS",
+      "notional": 2.622861
+    },
+    {
+      "timestamp": "2026-10-22T17:35:07.376460+00:00",
+      "side": "SELL",
+      "ticker": "NOW",
+      "status": "SUCCESS",
+      "notional": 2.5857888
+    },
+    {
+      "timestamp": "2026-10-22T17:35:06.716893+00:00",
+      "side": "SELL",
+      "ticker": "META",
+      "status": "SUCCESS",
+      "notional": 2.3060398
+    },
+    {
+      "timestamp": "2026-10-22T17:35:06.337332+00:00",
+      "side": "SELL",
+      "ticker": "FICO",
+      "status": "SUCCESS",
+      "notional": 2.5656092
+    },
+    {
+      "timestamp": "2026-10-22T17:35:05.967898+00:00",
+      "side": "SELL",
+      "ticker": "ETN",
+      "status": "SUCCESS",
+      "notional": 2.3902181
+    },
+    {
+      "timestamp": "2026-10-22T17:35:05.651192+00:00",
+      "side": "SELL",
+      "ticker": "DDOG",
+      "status": "FAILED",
+      "notional": 2.458982
+    },
+    {
+      "timestamp": "2026-10-22T17:35:05.305663+00:00",
+      "side": "SELL",
+      "ticker": "CRWD",
+      "status": "SUCCESS",
+      "notional": 2.577987
+    },
+    {
+      "timestamp": "2026-10-22T17:35:04.881349+00:00",
+      "side": "SELL",
+      "ticker": "ASX",
+      "status": "SUCCESS",
+      "notional": 2.2849052
+    },
+    {
+      "timestamp": "2026-10-21T15:40:16.228324+00:00",
+      "side": "BUY",
+      "ticker": "SLB",
+      "status": "SUCCESS",
+      "notional": 2.5961364
+    },
+    {
+      "timestamp": "2026-10-21T15:40:15.787929+00:00",
+      "side": "BUY",
+      "ticker": "SAP",
+      "status": "SUCCESS",
+      "notional": 2.5963517
+    },
+    {
+      "timestamp": "2026-10-21T15:40:15.343087+00:00",
+      "side": "BUY",
+      "ticker": "NOW",
+      "status": "SUCCESS",
+      "notional": 2.5957888
+    },
+    {
+      "timestamp": "2026-10-21T15:40:14.837256+00:00",
+      "side": "BUY",
+      "ticker": "META",
+      "status": "SUCCESS",
+      "notional": 2.5966622
+    },
+    {
+      "timestamp": "2026-10-21T15:40:14.144155+00:00",
+      "side": "BUY",
+      "ticker": "FICO",
+      "status": "SUCCESS",
+      "notional": 2.5963428
+    },
+    {
+      "timestamp": "2026-10-21T15:40:13.721621+00:00",
+      "side": "BUY",
+      "ticker": "ETN",
+      "status": "SUCCESS",
+      "notional": 2.595807
+    },
+    {
+      "timestamp": "2026-10-21T15:40:13.045766+00:00",
+      "side": "BUY",
+      "ticker": "DHR",
+      "status": "FAILED",
+      "notional": 2.5957386
+    },
+    {
+      "timestamp": "2026-10-21T15:40:12.635637+00:00",
+      "side": "BUY",
+      "ticker": "DDOG",
+      "status": "SUCCESS",
+      "notional": 2.5976592
+    },
+    {
+      "timestamp": "2026-10-21T15:40:12.233037+00:00",
+      "side": "BUY",
+      "ticker": "CRWD",
+      "status": "SUCCESS",
+      "notional": 2.597252
+    },
+    {
+      "timestamp": "2026-10-21T15:40:11.557286+00:00",
+      "side": "BUY",
+      "ticker": "ASX",
+      "status": "SUCCESS",
+      "notional": 2.5962748
+    },
+    {
+      "timestamp": "2026-10-21T15:39:51.661532+00:00",
+      "side": "SELL",
+      "ticker": "SNY",
+      "status": "SUCCESS",
+      "notional": 12.4574048
+    },
+    {
+      "timestamp": "2026-10-21T15:39:51.215231+00:00",
+      "side": "SELL",
+      "ticker": "ORCL",
+      "status": "SUCCESS",
+      "notional": 12.020408
+    },
+    {
+      "timestamp": "2026-10-21T15:39:50.450971+00:00",
+      "side": "SELL",
+      "ticker": "ON",
+      "status": "SUCCESS",
+      "notional": 12.3797016
+    },
+    {
+      "timestamp": "2026-10-21T15:39:49.992409+00:00",
+      "side": "SELL",
+      "ticker": "NXPI",
+      "status": "SUCCESS",
+      "notional": 12.404144
+    },
+    {
+      "timestamp": "2026-10-21T15:39:49.541413+00:00",
+      "side": "SELL",
+      "ticker": "MPWR",
+      "status": "SUCCESS",
+      "notional": 2.8210175
+    },
+    {
+      "timestamp": "2026-10-21T15:39:49.142223+00:00",
+      "side": "SELL",
+      "ticker": "MCHP",
+      "status": "SUCCESS",
+      "notional": 12.2286621
+    },
+    {
+      "timestamp": "2026-10-21T15:39:48.760136+00:00",
+      "side": "SELL",
+      "ticker": "LRCX",
+      "status": "SUCCESS",
+      "notional": 2.70817
+    },
+    {
+      "timestamp": "2026-10-21T15:39:48.061507+00:00",
+      "side": "SELL",
+      "ticker": "LLY",
+      "status": "SUCCESS",
+      "notional": 12.1212212
+    },
+    {
+      "timestamp": "2026-10-21T15:39:47.643092+00:00",
+      "side": "SELL",
+      "ticker": "LEN",
+      "status": "SUCCESS",
+      "notional": 12.2375254
+    },
+    {
+      "timestamp": "2026-10-21T15:39:47.221039+00:00",
+      "side": "SELL",
+      "ticker": "HUBS",
+      "status": "SUCCESS",
+      "notional": 12.7145792
+    },
+    {
+      "timestamp": "2026-10-21T15:39:46.775773+00:00",
+      "side": "SELL",
+      "ticker": "APP",
+      "status": "SUCCESS",
+      "notional": 12.0278022
+    },
+    {
+      "timestamp": "2026-10-21T15:39:46.153842+00:00",
+      "side": "SELL",
+      "ticker": "ADBE",
+      "status": "SUCCESS",
+      "notional": 12.5082852
+    },
     {
       "timestamp": "2026-10-20T15:35:29.242359+00:00",
       "side": "BUY",
@@ -1776,10 +2063,10 @@ const DASHBOARD_DATA = {
     }
   ],
   "trade_summary": {
-    "total": 196,
-    "buys": 92,
-    "sells": 80,
-    "failed": 24
+    "total": 237,
+    "buys": 111,
+    "sells": 100,
+    "failed": 26
   }
 };
 
