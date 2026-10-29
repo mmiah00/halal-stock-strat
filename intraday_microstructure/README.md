@@ -63,13 +63,22 @@ relative_strength = ( trail_return(1) - cross_sectional_mean_at_this_minute )
                      / cross_sectional_std_at_this_minute
                     (a z-score against all other tickers at that exact minute — the rotation
                      strategy's own signal, demoted from primary driver to one input among several)
+
+garman_klass_vol  = sqrt( mean_over_trailing_10min( GK_var ) )     (added later, see below)
+GK_var(bar)       = 0.5 × ln(high/low)² − (2×ln(2) − 1) × ln(close/open)²
+                    (Garman-Klass (1980): a per-bar realized-variance estimator that uses the
+                     bar's own high/low range, not just open/close — more statistically
+                     efficient than squared close-to-close returns for the same data)
 ```
 
 **Finding**: conditioning on the high tercile of `relative_strength` alone lifts IC from +0.052
 to +0.081 (it does almost all the work; `vwap_dist` and `volume_surprise` add little on top of
 it). Restricting the backtest to minutes passing all three filters raised the gross edge to
 **+2.83 bps**, pushing the cost breakeven out to 1-2 bps — real progress, still not enough to
-survive realistic costs unconditionally.
+survive realistic costs unconditionally. Garman-Klass volatility, added later as a 4th feature,
+showed almost no selectivity on its own (IC nearly flat across terciles) and a mixed result when
+added to the combined filter — see `STRATEGY.md`'s Phase 2 addendum for the honest, nuanced
+numbers (an IC-vs-backtest divergence worth treating with skepticism, not as a clean win).
 
 ## Phase 3 — trade imbalance
 
@@ -87,14 +96,17 @@ TOI(minute) = ( Σ volume where direction=+1  -  Σ volume where direction=-1 )
               / ( Σ volume where direction=+1  +  Σ volume where direction=-1 )
 ```
 
-**Status**: the engineering (a historical-tick downloader, tick-rule classification, the merge
-pipeline) all works, but the first analysis run was inconclusive — the multi-day tick download
-left different tickers' cached windows on different calendar dates than the frozen minute-bar
-cache, so only 11 of 28 tickers overlapped with any usable signal. As of 2026-10-19 the tick
-download finished cleanly for the full universe (126 tickers, minus 5 skipped — see below), so a
-properly re-aligned re-run (refresh the minute-bar cache to the same date range, or derive bars
-directly from the tick data) is the natural next step before trusting any trade-imbalance
-finding. See `STRATEGY.md` for the detailed postmortem.
+**Status**: rebuilt and re-run. The first attempt (28 tickers) merged ticks with the separate,
+frozen minute-bar cache and only found usable overlap for 11 of 28 tickers. The rebuild instead
+derives every feature — reversal score, VWAP distance, relative strength, and TOI — directly
+from each ticker's own tick data, so there's nothing left to misalign; it uses the full
+126-ticker universe. Unconditional IC came back at **+0.28** (vs. Phase 2's ~+0.05), with a
+long-short decile backtest edge of **+5.91bps gross**, improving further when combined with
+Phase 2's filters — surviving up to 5bps of cost, a real step up from Phase 1/2. That said, this
+sample is concentrated in just a few calendar days (most tickers' tick caches land on
+2026-10-19), not a uniform one-month window like Phase 1/2, so the *magnitude* of the
+improvement should be treated as provisional pending a longer, more evenly-dated re-run — see
+`STRATEGY.md` for the full reasoning and numbers.
 
 ## Data pipeline notes
 

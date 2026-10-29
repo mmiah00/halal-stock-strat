@@ -15,7 +15,7 @@ increasing order of data requirements and modeling complexity.
 |---|---|---|---|
 | 1 | Intraday momentum + reversal baseline — does a stock's own trailing k-minute return predict its forward h-minute return, and in which direction? | 1-min OHLCV | **Done** |
 | 2 | Add VWAP distance, volume surprise, and relative strength as conditioning features on top of the Phase 1 reversal signal | 1-min OHLCV (same data, new features) | **Done (initial pass)** |
-| 3 | Add trade imbalance (buy volume vs. sell volume) | Trade-level tick data | **Infrastructure done, first analysis inconclusive** |
+| 3 | Add trade imbalance (buy volume vs. sell volume) | Trade-level tick data | **Done (rebuilt, promising but provisional)** |
 | 4 | Add Level 2 order-book imbalance (bid/ask depth) | L2 order book data | Not started |
 | 5 | Train a model (e.g. XGBoost) predicting 5-minute forward excess return from all of the above features combined | All of the above | Not started |
 | 6 | Trade only when predicted return exceeds estimated transaction cost by a meaningful margin | Model from Phase 5 + a real cost model | Not started |
@@ -86,7 +86,17 @@ notebook's Key Findings for the full numbers and caveats (one month of data, mil
 the volume-surprise baseline, multiple-comparisons risk from bucketing three features on a
 single month).
 
-## Phase 3 — trade imbalance (infrastructure done, first analysis inconclusive)
+**Addendum — Garman-Klass realized volatility** (added later as a 4th feature, same notebook):
+computed from each bar's own OHLC range, averaged over a trailing 10-minute window. On its own,
+it showed almost no selectivity (IC nearly flat across low/mid/high terciles: 0.050/0.042/0.050
+— no monotonic pattern, unlike relative_strength's clear progression). Adding it to the combined
+filter slightly *lowered* average IC (0.071 → 0.068) on a much thinner sample (4.7% → 2.7% of
+observations), but the realized backtest spread improved anyway (+2.60bps → **+2.97bps** gross,
+on the original-3-feature vs. plus-GK-vol comparison at this later sample size). That IC-vs-
+backtest divergence is flagged in the notebook as a reason for real skepticism, not a clean win
+— the backtest number comes from only ~2,400 decisions on an already-thin cross-section.
+
+## Phase 3 — trade imbalance (done, rebuilt)
 
 **Files**: `download_trade_ticks.py` (resumable historical-tick downloader, tick-rule
 buy/sell classification, caches to `data/ticks/{TICKER}.csv`), `run_with_watchdog.sh` (external
@@ -98,9 +108,9 @@ always be caught from inside the script itself), `phase3_trade_imbalance.ipynb`.
 feature alongside Phase 2's three, to see whether it adds genuinely new selectivity beyond what
 price/volume-derived features already capture.
 
-**What actually happened**: the tick download turned into the hardest engineering problem in
-this whole project so far — not because the idea was hard, but because of a string of real bugs
-and an unusually unstable TWS stretch over 2026-10-07 through 2026-10-10:
+**What actually happened (download)**: the tick download turned into the hardest engineering
+problem in this whole project so far — not because the idea was hard, but because of a string of
+real bugs and an unusually unstable TWS stretch over 2026-10-07 through 2026-10-19:
 
 - A connectivity blip left a request hanging forever (no timeout on the sync call) — fixed with
   chunk-level retries.
@@ -112,27 +122,56 @@ and an unusually unstable TWS stretch over 2026-10-07 through 2026-10-10:
   synchronous call and moved timeout protection to an external watchdog script instead, which
   restarts the whole process if its log goes stale rather than fighting asyncio cancellation
   semantics in-process.
-- Three tickers (NVDA, MRVL, META) hang reproducibly on every attempt at some chunk deep into
-  their fetch — confirmed NOT a pacing/clientId issue (both work fine in isolated single-chunk
-  tests) — and are skipped for now (see `SKIP_TICKERS`), since there's no per-chunk checkpointing
-  yet to avoid re-walking from scratch on every retry.
+- Five tickers (NVDA, MRVL, META, ORCL, AMZN) hang reproducibly on every attempt at some chunk
+  deep into their fetch — confirmed NOT a pacing/clientId issue (isolated single-chunk tests on
+  each succeed instantly) — and are permanently skipped (see `SKIP_TICKERS`). One of them (ORCL)
+  specifically taught a documented lesson: a short manual test looked clean and wrongly suggested
+  the hang wasn't real; only a full-length watchdog run proved otherwise. That lesson was applied
+  (not re-litigated) when diagnosing AMZN afterward.
 - On 2026-10-10 (a Saturday), the IB connection itself stopped completing its handshake entirely
   — consistent with IBKR's weekend maintenance window — and the download was paused rather than
   left crash-looping every 5 seconds.
 
-**First analysis result (2026-10-10, 28 tickers cached)**: inconclusive, for a data reason more
-than a finding about trade imbalance itself. The multi-day download means different tickers'
-"most recent ~1.5 days" of tick data now land on different calendar windows, and only 11 of 28
-tickers had any overlap at all with the (older, frozen-as-of-Oct-7) minute-bar cache — over
-just ~1 day. Numbers from that narrow sample are noisy and partly contradict Phase 2's own
-findings on the same names (e.g. relative_strength's bucket pattern inverted), which is itself
-evidence the sample is too small and misaligned to trust yet, not a real trade-imbalance result.
-See the notebook's Key Findings for the full numbers and the data-alignment explanation.
+The full download finished cleanly on 2026-10-19: 126 of 131 tickers cached.
 
-**Next step**: once TWS is confirmed stable again, either refresh the minute-bar cache to the
-same date range as the tick cache, or derive 1-minute bars directly from the tick data for the
-overlapping tickers, then re-run the Phase 3 notebook on a properly aligned, full-width sample
-before drawing any real conclusion about trade imbalance.
+**First analysis attempt (2026-10-10, 28 tickers cached): inconclusive, for a data reason, not a
+finding about trade imbalance.** That version merged ticks with the Phase 1/2 minute-bar cache
+by `(ticker, minute)`. Because `download_trade_ticks.py` always pulls "the most recent ~1.5
+days" relative to whenever it happens to run, and the minute-bar cache is frozen as of
+2026-10-07, only 11 of 28 tickers had any overlap at all, over roughly 1 day. Numbers from that
+narrow sample were noisy and partly contradicted Phase 2's own findings on the same names —
+evidence the sample was too small and misaligned to trust, not a real trade-imbalance result.
+
+**The rebuild (2026-10-23): derive every feature directly from tick data, nothing left to
+merge.** Rather than try to realign two independently-fetched sources, 1-minute bars (`close`,
+VWAP, `toi`) are now built directly from each ticker's own tick stream, and `reversal_score`,
+`vwap_dist`, and `relative_strength` are all computed from those same tick-derived bars.
+`volume_surprise` was dropped — it needs a multi-session minute-of-session baseline per ticker
+that ~1.5 days of tick history can't meaningfully support. This uses the full 126-ticker
+universe, with nothing left to misalign.
+
+**What it found**: unconditional IC on the tick-derived panel (63,286 observations) is
+**+0.2813** — several times Phase 1/2's ~+0.05, with real, broadly monotonic tercile separation
+on all three features (`toi` low/mid/high: +0.40/+0.22/+0.16; `vwap_dist`: +0.14/+0.07/+0.48;
+`relative_strength`: +0.01/+0.05/+0.38 — note `toi`'s pattern runs the *opposite* direction from
+the other two, strongest in its low-magnitude bucket). The long-short decile backtest shows a
+real gross edge of **+5.91bps unconditionally**, improving to **+6.96bps** under the Phase 2
+style filter (`vwap_dist` + `relative_strength` both high) and **+8.94bps** adding `toi` to that
+filter too — all three survive 5bps of assumed cost, a real step up from Phase 1/2's ~1bps
+breakeven. Trade density was checked specifically to rule out mechanical bid-ask bounce as the
+explanation: median ~38 trades/minute across all 126 tickers, not the handful-of-trades regime
+where bounce would dominate.
+
+**Why these numbers shouldn't be taken at face value yet, despite looking like real progress**:
+this sample is concentrated in whichever few calendar days most tickers' tick fetches happened to
+land on (62 of 126 tickers on 2026-10-19 alone), not a uniform one-month sample like Phase 1/2.
+A short, concentrated window can show an inflated effect if it happened to include unusually
+active days, and there's no way to distinguish that from a persistently stronger effect without
+a longer, more evenly-dated sample. See the notebook's Key Findings and Caveats for the full
+reasoning. **Next step**: re-run this same tick-derived-bars pipeline on a longer, more uniformly
+collected tick history before trusting the magnitude of the improvement (the direction — trade
+imbalance adding genuine, non-redundant selectivity — looks real; how large an edge it's worth
+trading on does not).
 
 ## A note on what's NOT being chased yet
 
