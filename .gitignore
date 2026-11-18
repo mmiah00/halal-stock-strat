@@ -1,7 +1,10 @@
 __pycache__/
 *.pyc
+.ipynb_checkpoints/
+.DS_Store
 /live
 relative_strength_rotation/live/*.log
+relative_strength_rotation/live/*.log.*
 relative_strength_rotation/live/*_state.csv
 relative_strength_rotation/live/*_state.json
 relative_strength_rotation/live/*_state.txt
@@ -11,7 +14,17 @@ relative_strength_rotation/live/*trade_log.txt
 relative_strength_rotation/live/*trade_log.csv
 relative_strength_rotation/live/email_credentials.env
 relative_strength_rotation/live/webull_credentials.env
-webull_trade_sdk.log
-webull_data_sdk.log
+
+# SDK debug logs leak live API tokens/account IDs in request/response dumps — never commit
+# these, anywhere in the repo (bare pattern matches at any depth, not just the repo root).
+webull_trade_sdk.log*
+webull_data_sdk.log*
+intraday_microstructure/*.log
+intraday_microstructure/*.log.*
+
+# Any .env is a credentials file by convention in this repo, except the committed templates.
+*.env
+!*.env.example
+
 conf/
 relative_strength_rotation/live/trade_popups/
