@@ -26,6 +26,22 @@ A positive IC means the signal predicts *continuation* (momentum); negative mean
 deliberate discipline — see Phase 1's "Key findings" for a backtest sign-bug this exact
 discipline caught before it reached a conclusion.
 
+## Key findings, at a glance
+
+| Phase | Signal added | Unconditional IC | Best long-short backtest edge | Survives costs up to |
+|---|---|---|---|---|
+| 1 — reversal baseline | trailing 1-min return | -0.041 to -0.013 (reversal, all horizons) | +1.76 bps gross | ~1 bps round-trip |
+| 2 — feature-augmented | + VWAP distance, volume surprise, relative strength | +0.052 unconditional; +0.081 in top `relative_strength` tercile | +2.83 bps (3-feature filter) | 1-2 bps round-trip |
+| 3 — trade imbalance | + tick-rule buy/sell imbalance (TOI), tick-derived bars | +0.28 unconditional (provisional — concentrated sample, see caveat below) | +8.94 bps (combined filter) | ~5 bps round-trip |
+
+Each phase is a direct response to the previous one's limit: Phase 1 found a real but
+cost-fragile reversal effect; Phase 2 asked whether *selectivity* (trading only the setups most
+likely to be genuine) could buy enough edge to survive realistic costs, and found a modest yes;
+Phase 3 asked whether a genuinely new information source (order flow, not just price/volume)
+could do better, and found a much larger effect — but on a sample concentrated in a handful of
+calendar days, so that magnitude specifically needs a longer, re-run confirmation before being
+trusted at face value (see Phase 3's section below).
+
 ## Phase 1 — momentum/reversal baseline
 
 **Signal**: the trailing return over the last `k` minutes, for `k` and forward horizon `h` each

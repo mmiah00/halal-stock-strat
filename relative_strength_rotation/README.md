@@ -6,6 +6,33 @@ rotates out of laggards and into whatever is currently strongest. Two variants o
 a slower **monthly** version (research-only / dry-run) and a faster **2-hour intraday** version
 that trades real money live.
 
+## The question
+
+Cross-sectional momentum (buying recent relative winners) is one of the most replicated
+anomalies in equity markets at monthly/quarterly horizons. The question this project actually
+asks is narrower and more practical: **does that same ranking rule — rank by trailing return,
+hold the top decile — still carry a tradeable edge when the lookback and rebalance cadence are
+compressed from months down to hours, once real transaction costs are priced in?** Compressing
+the horizon multiplies the number of decisions (and therefore cumulative cost) by orders of
+magnitude for the same underlying signal, so a gross-positive backtest at any one cadence isn't
+by itself evidence the strategy survives being run that fast. That's the question the frequency
+experiment below was built to answer directly, rather than assume.
+
+## Key findings
+
+- **The 2-hour intraday cadence that is currently live does not have a validated statistical
+  edge.** A dedicated backtest across 5 rebalance cadences (1-24 hourly bars) found **negative
+  information coefficient at every horizon tested**, and — modeling a realistic 5bps round-trip
+  cost — only the *slowest* cadence tested stayed net-profitable; faster rebalancing did not
+  help, it just paid more in costs against a signal that wasn't there. See `relative_strength_rotation_frequency_experiment.ipynb`.
+- This finding, not a hunch, is what motivated the pivot to microstructure-feature research in
+  `../intraday_microstructure/` — see that project's README for what came out of taking the
+  negative result seriously instead of re-tuning the same signal.
+- The strategy has been running with real money since **2026-10-05**, which post-dates every
+  backtest's data window — a genuine out-of-sample period, though nothing in this project yet
+  formally compares realized live performance against backtested expectations for that same
+  stretch (a natural next step, not yet done).
+
 ## How it works
 
 **Universe.** All tickers marked `Stock` (not ETF) in `equities-list.csv` at the repo root — 131
@@ -91,12 +118,11 @@ realized_PnL = Σ (sell_price[t] - cost_basis[t]) × shares_sold[t]      over se
 
 ## What's been learned (see linked notebooks for full detail)
 
-The 2-hour intraday cadence was chosen by analogy, not validated — a later backtest
-(`relative_strength_rotation_frequency_experiment.ipynb`) found **negative information
-coefficient at every rebalance horizon tested** (1-24 hourly bars) and that, once realistic
-transaction costs are modeled, only the *slowest* cadence tested stayed profitable — faster
-rebalancing did not help. This finding is what motivated the pivot to the microstructure-based
-research in `../intraday_microstructure/` (see that folder's own README).
+The 2-hour intraday cadence was chosen by analogy to the monthly version's 3:1 lookback:rebalance
+ratio, not validated against data before going live — the frequency experiment above was run
+*after* the live script, as a post-hoc check. That ordering (ship first on a reasonable-looking
+analogy, validate second) is itself worth being explicit about: it's why the negative-IC finding
+reads as a real correction rather than a design choice that was already known to be weak.
 
 ## File structure
 
