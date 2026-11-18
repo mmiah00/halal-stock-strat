@@ -65,8 +65,6 @@ MAX_ORDER_FRACTION_OF_NAV = 0.15  # sanity ceiling; see rotation_common.build_or
 MIN_TRADE_NOTIONAL = 1.0        # skip suggesting rebalancing dust smaller than this (small portfolio, small threshold)
 LIMIT_OFFSET_BPS = 50           # suggested marketable limit: buy at last*(1+offset), sell at last*(1-offset)
 
-EMAIL_TO = 'maishm357@gmail.com'
-
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)s %(message)s',
@@ -81,7 +79,8 @@ log = logging.getLogger('rsr_email')
 def load_email_credentials() -> tuple[str, str] | None:
     """Returns (smtp_user, app_password), or None if not configured. Checks OS environment
     variables first (EMAIL_SMTP_USER, EMAIL_SMTP_APP_PASSWORD), then a local KEY=VALUE file
-    at CREDENTIALS_PATH, so this can be set up without touching the crontab environment."""
+    at CREDENTIALS_PATH, so this can be set up without touching the crontab environment.
+    No hardcoded fallback address — EMAIL_SMTP_USER must be set in one of those two places."""
     import os
     user = os.environ.get('EMAIL_SMTP_USER')
     password = os.environ.get('EMAIL_SMTP_APP_PASSWORD')
@@ -95,9 +94,9 @@ def load_email_credentials() -> tuple[str, str] | None:
             values[key.strip()] = val.strip()
         user = user or values.get('EMAIL_SMTP_USER')
         password = password or values.get('EMAIL_SMTP_APP_PASSWORD')
-    if not password:
+    if not password or not user:
         return None
-    return (user or EMAIL_TO), password
+    return user, password
 
 
 def send_email(subject: str, body: str) -> bool:
@@ -109,13 +108,13 @@ def send_email(subject: str, body: str) -> bool:
     msg = MIMEText(body)
     msg['Subject'] = subject
     msg['From'] = smtp_user
-    msg['To'] = EMAIL_TO
+    msg['To'] = smtp_user  # sends to itself — see email_credentials.env.example
     try:
         with smtplib.SMTP('smtp.gmail.com', 587, timeout=20) as server:
             server.starttls()
             server.login(smtp_user, app_password)
-            server.sendmail(smtp_user, [EMAIL_TO], msg.as_string())
-        log.info('email sent to %s', EMAIL_TO)
+            server.sendmail(smtp_user, [smtp_user], msg.as_string())
+        log.info('email sent to %s', smtp_user)
         return True
     except Exception:
         log.exception('email send failed')
