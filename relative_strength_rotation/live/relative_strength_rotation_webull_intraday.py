@@ -123,6 +123,13 @@ INVESTABLE_FRACTION = 0.98
 MAX_ORDER_FRACTION_OF_NAV = 0.15
 MIN_TRADE_NOTIONAL = 1.0
 FILL_WAIT_SECONDS = 20
+ORDER_PACING_SECONDS = 1.0  # pause between each order's place_order() call (itself 2-3 Webull
+                            # API calls: preview_order, place_order, and a balance re-read) —
+                            # added 2026-11-20 after repeated 429 Too Many Requests errors
+                            # mid-rebalance dropped a real leg outright (not just the cosmetic
+                            # post-order balance check) on three separate occasions (AVGO on
+                            # 2026-11-20, HUBS/VLO on 2026-11-12/11-16) when ~10 orders fired
+                            # back-to-back with zero pacing between them.
 
 logging.basicConfig(
     level=logging.INFO,
@@ -287,6 +294,7 @@ def main() -> int:
 
     for order_spec in sells:
         place_order(trade_client, account_id, order_spec, dry_run)
+        time.sleep(ORDER_PACING_SECONDS)
     if sells and not dry_run:
         time.sleep(FILL_WAIT_SECONDS)
         free_cash, current_positions = get_free_cash_and_positions(trade_client, account_id)
@@ -296,6 +304,7 @@ def main() -> int:
         buys = [o for o in orders if o['side'] == 'BUY']
     for order_spec in buys:
         place_order(trade_client, account_id, order_spec, dry_run)
+        time.sleep(ORDER_PACING_SECONDS)
 
     if sells or buys:
         net_profit = compute_realized_pnl(sells, cost_basis, log)
