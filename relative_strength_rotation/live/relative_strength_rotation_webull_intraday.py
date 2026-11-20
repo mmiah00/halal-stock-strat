@@ -80,7 +80,7 @@ from rotation_common import (
 )
 from webull_common import (
     build_trade_client, get_free_cash_and_positions, managed_nav, get_cost_basis,
-    compute_realized_pnl, send_trade_popup, send_failure_popup,
+    compute_realized_pnl, send_trade_popup, send_failure_popup, send_no_action_popup,
     place_order as _place_order, confirm_live_authorized as _confirm_live_authorized,
 )
 
@@ -208,8 +208,12 @@ def main() -> int:
 
     last_rebalance = read_last_rebalance_time()
     if last_rebalance is not None and (now - last_rebalance) < pd.Timedelta(hours=REBALANCE_INTERVAL_HOURS):
+        age = now - last_rebalance
         log.info('last rebalance was %s ago (< %dh) — exiting (idempotency guard)',
-                  now - last_rebalance, REBALANCE_INTERVAL_HOURS)
+                  age, REBALANCE_INTERVAL_HOURS)
+        send_no_action_popup(
+            f'last rebalance was {age} ago, under the {REBALANCE_INTERVAL_HOURS}h idempotency '
+            'window — skipped to avoid a redundant run', LOG_PATH, log)
         return 0
 
     live_authorized = confirm_live_authorized(confirm_live_flag)
@@ -253,6 +257,9 @@ def main() -> int:
 
     if not selected:
         log.info('no rebalance action this cycle (see warning above if universe was too thin) — current positions left as-is')
+        send_no_action_popup(
+            f'only {len(ranked)} scoreable names this cycle (< MIN_UNIVERSE={MIN_UNIVERSE}) — '
+            'held current basket unchanged', LOG_PATH, log)
         if not dry_run:
             write_last_rebalance_time(now)
         return 0
@@ -293,6 +300,10 @@ def main() -> int:
     if sells or buys:
         net_profit = compute_realized_pnl(sells, cost_basis, log)
         send_trade_popup(now, sells, buys, net_profit, dry_run, log)
+    else:
+        send_no_action_popup(
+            f'selected basket ({", ".join(selected)}) already matches current holdings — '
+            'no orders needed this cycle', LOG_PATH, log)
 
     if not dry_run:
         write_last_rebalance_time(now)

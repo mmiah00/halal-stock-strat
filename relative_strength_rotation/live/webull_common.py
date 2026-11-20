@@ -428,6 +428,46 @@ Submit-BTNotification -Content $content
         log.exception('could not send failure popup (non-fatal)')
 
 
+def send_no_action_popup(reason: str, log_path: Path, log) -> None:
+    """Fires a 3-line Windows toast when a cycle runs all the way through (connects to both
+    IBKR and Webull, computes a ranking) but ends up placing no orders — thin universe,
+    basket already matches target, or the idempotency guard skipped a redundant run. This is
+    deliberately a different-looking toast from send_failure_popup (line 2 reads 'NO TRADE
+    THIS CYCLE', not 'FAILED') so a quiet-but-healthy cycle doesn't read as an alarm — the
+    point is visibility into "it tried and here's why," not a false failure signal. Same
+    resilience contract as the other two popups: never raises into the caller."""
+    import subprocess
+
+    try:
+        win_log_path = subprocess.run(['wslpath', '-w', str(log_path)], capture_output=True, text=True, check=True).stdout.strip()
+
+        timestamp = pd.Timestamp.now(tz='UTC')
+        line1 = f'{timestamp.strftime("%Y-%m-%d %H:%M %Z")}'
+        line2 = 'NO TRADE THIS CYCLE'
+        line3 = f'{reason[:120]} (click for log)'
+
+        ps_script = f'''
+Import-Module BurntToast
+$t1 = New-BTText -Text {_ps_quote(line1)}
+$t2 = New-BTText -Text {_ps_quote(line2)}
+$t3 = New-BTText -Text {_ps_quote(line3)}
+$binding = New-BTBinding -Children $t1, $t2, $t3
+$visual = New-BTVisual -BindingGeneric $binding
+$content = New-BTContent -Visual $visual -Launch {_ps_quote('file:///' + win_log_path)} -ActivationType Protocol
+Submit-BTNotification -Content $content
+'''
+        result = subprocess.run(
+            [POWERSHELL_EXE, '-ExecutionPolicy', 'Bypass', '-Command', ps_script],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            log.warning('no-action popup toast failed (non-fatal): %s', result.stderr[:500])
+        else:
+            log.info('no-action popup sent: %s', reason)
+    except Exception:
+        log.exception('could not send no-action popup (non-fatal)')
+
+
 def _ps_quote(s: str) -> str:
     """Single-quoted PowerShell string literal — doubling embedded single quotes is PowerShell's
     own escaping rule, not a security workaround, so this is safe for the trusted, locally-built
